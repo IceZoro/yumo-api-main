@@ -13,6 +13,101 @@
   @tailwind utilities;
 }
 
+/* ==================== 钰墨 VI 色系 ==================== */
+:root {
+  /* 品牌主色 */
+  --ym-primary: #00E5CC;
+  --ym-primary-hover: #00FFDD;
+  --ym-primary-glow: rgba(0, 229, 204, 0.4);
+  --ym-primary-subtle: rgba(0, 229, 204, 0.04);
+  --ym-primary-light: rgba(0, 229, 204, 0.15);
+
+  /* 深色背景系列 */
+  --ym-bg-dark: #0B0E17;
+  --ym-card-bg: #111827;
+  --ym-border: #1F2937;
+
+  /* 文字层级 */
+  --ym-text-primary: #F1F5F9;
+  --ym-text-secondary: #94A3B8;
+  --ym-text-tertiary: #64748B;
+
+  /* 圆角规范 */
+  --ym-radius-sm: 14px;
+  --ym-radius-md: 18px;
+  --ym-radius-lg: 24px;
+  --ym-radius-pill: 50px;
+
+  /* Semi UI 圆角覆盖 */
+  --semi-border-radius-small: 14px;
+  --semi-border-radius-medium: 18px;
+  --semi-border-radius-large: 24px;
+}
+
+/* ====== 侧边栏主题变量 ====== */
+:root {
+  --sidebar-bg: #ffffff;
+  --sidebar-text: var(--semi-color-text-0, #1C1F23);
+  --sidebar-text-secondary: var(--semi-color-text-2, #6B7785);
+  --sidebar-border: var(--semi-color-border, #E0E0E0);
+  --sidebar-item-hover: rgba(0, 0, 0, 0.04);
+  --sidebar-item-active: rgba(0, 229, 204, 0.08);
+  --sidebar-item-active-text: var(--ym-primary);
+}
+
+body[theme-mode='dark'] {
+  --sidebar-bg: #111827;
+  --sidebar-text: #F1F5F9;
+  --sidebar-text-secondary: #94A3B8;
+  --sidebar-border: #1F2937;
+  --sidebar-item-hover: rgba(255, 255, 255, 0.06);
+  --sidebar-item-active: rgba(0, 229, 204, 0.12);
+  --sidebar-item-active-text: var(--ym-primary);
+}
+
+/* ====== Semi UI 深色模式色系统一为 VI 色系 ====== */
+html.dark {
+  /* 背景色 */
+  --semi-color-bg-0: #0B0E17;   /* 页面主背景，原 #16161A */
+  --semi-color-bg-1: #111827;   /* 卡片/面板背景，原 #232429 */
+  --semi-color-bg-2: #1F2937;   /* 悬停/选中背景，原 #35363C */
+  --semi-color-bg-3: #2D3748;   /* 更浅一级 */
+  --semi-color-bg-4: #374151;   /* 最浅背景 */
+  
+  /* 文字色 */
+  --semi-color-text-0: #F1F5F9;  /* 主文字 */
+  --semi-color-text-1: #F1F5F9;  /* 次主文字 */
+  --semi-color-text-2: #94A3B8;  /* 次要文字 */
+  --semi-color-text-3: #64748B;  /* 辅助文字 */
+  
+  /* 边框色 */
+  --semi-color-border: #1F2937;
+  
+  /* 主色覆盖 */
+  --semi-color-primary: #00E5CC;
+  --semi-color-primary-hover: #00FFDD;
+  --semi-color-primary-active: #00CDB6;
+  --semi-color-primary-light-default: rgba(0, 229, 204, 0.08);
+  --semi-color-primary-light-hover: rgba(0, 229, 204, 0.15);
+  --semi-color-primary-light-active: rgba(0, 229, 204, 0.2);
+  
+  /* 链接色 */
+  --semi-color-link: #00E5CC;
+  --semi-color-link-hover: #00FFDD;
+  --semi-color-link-active: #00CDB6;
+  --semi-color-link-visited: #00E5CC;
+  
+  /* 填充色 */
+  --semi-color-fill-0: rgba(255, 255, 255, 0.04);
+  --semi-color-fill-1: rgba(255, 255, 255, 0.06);
+  --semi-color-fill-2: rgba(255, 255, 255, 0.08);
+}
+
+/* 深色模式下 body 背景统一 */
+html.dark body {
+  background-color: var(--ym-bg-dark);
+}
+
 /* ==================== 全局基础样式 ==================== */
 :root {
   --sidebar-width: 180px;
@@ -126,13 +221,15 @@ code {
   flex-direction: column;
   min-height: 0;
   transition: width 0.3s ease;
-  background: var(--semi-color-bg-0);
+  background: var(--sidebar-bg);
+  color: var(--sidebar-text);
+  border-right: 1px solid var(--sidebar-border);
 }
 
 .sidebar-nav {
   flex: 1;
   width: 100%;
-  background: var(--semi-color-bg-0);
+  background: var(--sidebar-bg);
   height: 100%;
   overflow-x: hidden;
   border-right: none;
@@ -156,13 +253,13 @@ code {
 }
 
 .sidebar-nav-item:hover {
-  background-color: rgba(var(--semi-blue-0), 0.08);
-  color: var(--semi-color-primary);
+  background-color: var(--sidebar-item-hover);
+  color: var(--sidebar-item-active-text);
 }
 
 .sidebar-nav-item-selected {
-  background-color: rgba(var(--semi-blue-0), 0.12);
-  color: var(--semi-color-primary);
+  background-color: var(--sidebar-item-active);
+  color: var(--sidebar-item-active-text);
   font-weight: 500;
 }
 
@@ -197,7 +294,7 @@ code {
 /* 分组标签样式 */
 .sidebar-group-label {
   padding: 4px 15px 8px;
-  color: var(--semi-color-text-2);
+  color: var(--sidebar-text-secondary);
   font-size: 12px;
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -212,13 +309,13 @@ code {
   padding: 12px;
   margin-top: auto;
   cursor: pointer;
-  background-color: var(--semi-color-bg-0);
+  background-color: var(--sidebar-bg);
   position: sticky;
   bottom: 0;
   z-index: 10;
-  box-shadow: 0 -10px 10px -5px var(--semi-color-bg-0);
+  box-shadow: 0 -10px 10px -5px var(--sidebar-bg);
   backdrop-filter: blur(4px);
-  border-top: 1px solid rgba(var(--semi-grey-0), 0.08);
+  border-top: 1px solid var(--sidebar-border);
 }
 
 .sidebar-collapse-button-inner {
@@ -244,17 +341,17 @@ code {
 
 @media (max-width: 767px) {
   .sidebar-container {
-    background: var(--semi-color-bg-1);
-    border-right: 1px solid var(--semi-color-border);
+    background: var(--sidebar-bg);
+    border-right: 1px solid var(--sidebar-border);
   }
 
   .sidebar-nav {
-    background: var(--semi-color-bg-1);
+    background: var(--sidebar-bg);
   }
 
   .sidebar-collapse-button {
-    background-color: var(--semi-color-bg-1);
-    box-shadow: 0 -10px 10px -5px var(--semi-color-bg-1);
+    background-color: var(--sidebar-bg);
+    box-shadow: 0 -10px 10px -5px var(--sidebar-bg);
   }
 }
 
@@ -965,21 +1062,110 @@ html.dark .with-pastel-balls::before {
   gap: 0.25rem;
 }
 
-/* ==================== 自定义圆角样式 ==================== */
-.semi-radio,
-.semi-tagInput,
+/* ==================== Semi UI 组件圆角统一 ==================== */
+
+/* 按钮 - 药丸形 */
+.semi-button {
+  border-radius: var(--ym-radius-pill) !important;
+}
+
+/* 输入框 - 矩形 */
+.semi-input-wrapper,
+.semi-input-wrapper-default,
+.semi-input-wrapper-small,
+.semi-input-wrapper-large,
+.semi-input,
+.semi-input-default,
+.semi-input-small,
+.semi-input-large,
 .semi-input-textarea-wrapper,
+.semi-select,
+.semi-select-selection,
+.semi-cascader-selection,
+.semi-datepicker-input,
+.semi-datepicker-range-input,
+.semi-tagInput {
+  border-radius: 2px !important;
+}
+
+/* 卡片 */
+.semi-card {
+  border-radius: var(--ym-radius-lg) !important;
+}
+
+/* 模态框 */
+.semi-modal-content {
+  border-radius: var(--ym-radius-lg) !important;
+}
+
+/* 下拉菜单 */
+.semi-select-option-list,
+.semi-dropdown-menu,
+.semi-popover-wrapper-content {
+  border-radius: var(--ym-radius-md) !important;
+}
+
+/* 标签 */
+.semi-tag,
+.semi-tag-closable {
+  border-radius: var(--ym-radius-sm) !important;
+}
+
+/* Toast 通知 */
+.semi-toast-wrapper .semi-toast {
+  border-radius: var(--ym-radius-md) !important;
+}
+
+/* Tooltip */
+.semi-tooltip-wrapper-content {
+  border-radius: var(--ym-radius-sm) !important;
+}
+
+/* 其他组件 */
+.semi-radio,
 .semi-navigation-sub-title,
 .semi-chat-inputBox-sendButton,
 .semi-page-item,
 .semi-navigation-item,
-.semi-tag-closable,
-.semi-input-wrapper,
-.semi-tabs-tab-button,
-.semi-select,
-.semi-button,
-.semi-datepicker-range-input {
-  border-radius: 10px !important;
+.semi-tabs-tab-button {
+  border-radius: var(--ym-radius-sm) !important;
+}
+
+/* 主按钮颜色 - 覆盖 Semi UI 默认蓝色，统一使用品牌青色 */
+.semi-button-primary {
+  background-color: var(--ym-primary) !important;
+  border-color: var(--ym-primary) !important;
+  color: #000 !important;
+}
+.semi-button-primary:hover,
+.semi-button-primary:focus {
+  background-color: var(--ym-primary-hover) !important;
+  border-color: var(--ym-primary-hover) !important;
+  color: #000 !important;
+}
+.semi-button-primary:active {
+  background-color: var(--ym-primary) !important;
+  border-color: var(--ym-primary) !important;
+  color: #000 !important;
+}
+
+/* Light 变种按钮 */
+.semi-button-primary.semi-button-light {
+  color: var(--ym-primary) !important;
+  background-color: var(--ym-primary-subtle) !important;
+}
+.semi-button-primary.semi-button-light:hover {
+  background-color: var(--ym-primary-light) !important;
+  color: var(--ym-primary) !important;
+}
+
+/* Borderless 变种按钮 */
+.semi-button-primary.semi-button-borderless {
+  color: var(--ym-primary) !important;
+}
+.semi-button-primary.semi-button-borderless:hover {
+  color: var(--ym-primary-hover) !important;
+  background-color: var(--ym-primary-subtle) !important;
 }
 
 @keyframes slideInLeft {

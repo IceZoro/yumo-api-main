@@ -66,6 +66,7 @@ export default defineConfig({
   },
   build: {
     rollupOptions: {
+      external: ['antd'],
       output: {
         manualChunks: {
           'react-core': ['react', 'react-dom', 'react-router-dom'],
@@ -91,6 +92,10 @@ export default defineConfig({
     host: '0.0.0.0',
     proxy: {
       '/api': {
+        target: 'http://localhost:3000',
+        changeOrigin: true,
+      },
+      '/v1': {
         target: 'http://localhost:3000',
         changeOrigin: true,
       },

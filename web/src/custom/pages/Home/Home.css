@@ -1,0 +1,330 @@
+/*
+Copyright (C) 2025 QuantumNous
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU Affero General Public License as
+published by the Free Software Foundation, either version 3 of the
+License, or (at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+GNU Affero General Public License for more details.
+
+You should have received a copy of the GNU Affero General Public License
+along with this program. If not, see <https://www.gnu.org/licenses/>.
+
+For commercial licensing, please contact support@quantumnous.com
+*/
+
+/* ==================== 首页沉浸式深色设计 ==================== */
+
+/* 首页容器 */
+.home-page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  background: var(--ym-bg-dark);
+  color: var(--ym-text-primary);
+  overflow-x: hidden;
+}
+
+/* 动态光晕背景 */
+.home-bg {
+  position: fixed;
+  inset: 0;
+  background: var(--ym-bg-dark);
+  overflow: hidden;
+  z-index: 0;
+}
+
+.home-bg::before,
+.home-bg::after {
+  content: '';
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(120px);
+  opacity: 0.3;
+  animation: float 8s ease-in-out infinite;
+}
+
+.home-bg::before {
+  width: 600px;
+  height: 600px;
+  background: var(--ym-primary);
+  top: -200px;
+  right: -100px;
+}
+
+.home-bg::after {
+  width: 400px;
+  height: 400px;
+  background: #3B82F6;
+  bottom: -100px;
+  left: -100px;
+  animation-delay: -4s;
+}
+
+@keyframes float {
+  0%, 100% { transform: translate(0, 0); }
+  50% { transform: translate(30px, 20px); }
+}
+
+/* ==================== 顶部导航栏 ==================== */
+.home-header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 24px;
+  background: rgba(11, 14, 23, 0.8);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--ym-border);
+  z-index: 100;
+}
+
+.home-header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.home-logo {
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
+}
+
+.home-brand {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--ym-text-primary);
+  letter-spacing: 0.5px;
+}
+
+.home-header-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.home-nav-link {
+  color: var(--ym-text-secondary);
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 500;
+  padding: 8px 16px;
+  border-radius: var(--ym-radius-sm);
+  transition: all 0.2s ease;
+}
+
+.home-nav-link:hover {
+  color: var(--ym-text-primary);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.home-nav-link-primary {
+  background: var(--ym-primary);
+  color: #000;
+  font-weight: 600;
+}
+
+.home-nav-link-primary:hover {
+  background: var(--ym-primary-hover);
+  color: #000;
+  box-shadow: 0 0 20px var(--ym-primary-glow);
+}
+
+/* ==================== Hero 区域 ==================== */
+.home-hero {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 120px 24px 80px;
+  position: relative;
+  z-index: 1;
+  text-align: center;
+}
+
+.home-hero-title {
+  font-size: clamp(32px, 6vw, 56px);
+  font-weight: 900;
+  color: var(--ym-text-primary);
+  line-height: 1.2;
+  margin-bottom: 16px;
+  letter-spacing: -0.02em;
+}
+
+.home-hero-subtitle {
+  font-size: clamp(16px, 2vw, 20px);
+  color: var(--ym-text-secondary);
+  max-width: 600px;
+  line-height: 1.6;
+  margin-bottom: 40px;
+}
+
+.home-cta-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--ym-primary);
+  color: #000;
+  font-size: 16px;
+  font-weight: 700;
+  padding: 16px 36px;
+  border-radius: var(--ym-radius-pill);
+  text-decoration: none;
+  transition: all 0.3s ease;
+  border: none;
+  cursor: pointer;
+}
+
+.home-cta-button:hover {
+  background: var(--ym-primary-hover);
+  box-shadow: 0 0 30px var(--ym-primary-glow);
+  transform: translateY(-2px);
+}
+
+/* ==================== AI 模型卡片网格 ==================== */
+.home-models {
+  padding: 40px 24px 80px;
+  position: relative;
+  z-index: 1;
+}
+
+.home-models-title {
+  text-align: center;
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--ym-text-primary);
+  margin-bottom: 40px;
+}
+
+.home-models-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 20px;
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+.home-model-card {
+  background: var(--ym-card-bg);
+  border: 1px solid var(--ym-border);
+  border-radius: var(--ym-radius-lg, 24px);
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+  transition: all 0.3s ease;
+}
+
+.home-model-card:hover {
+  border-color: var(--ym-primary);
+  box-shadow: 0 0 20px var(--ym-primary-glow);
+  transform: translateY(-2px);
+}
+
+.home-model-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.06);
+  overflow: hidden;
+  font-size: 28px;
+  line-height: 1;
+}
+
+.home-model-icon svg {
+  width: 32px;
+  height: 32px;
+}
+
+.home-model-name {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--ym-text-primary);
+}
+
+.home-model-desc {
+  font-size: 14px;
+  color: var(--ym-text-secondary);
+  line-height: 1.5;
+}
+
+/* ==================== 底部页脚 ==================== */
+.home-footer {
+  padding: 24px;
+  text-align: center;
+  border-top: 1px solid var(--ym-border);
+  position: relative;
+  z-index: 1;
+}
+
+.home-footer-text {
+  font-size: 14px;
+  color: var(--ym-text-tertiary);
+}
+
+/* ==================== 响应式布局 ==================== */
+@media (max-width: 768px) {
+  .home-header {
+    padding: 0 16px;
+  }
+
+  .home-brand {
+    font-size: 18px;
+  }
+
+  .home-hero {
+    padding: 100px 16px 60px;
+  }
+
+  .home-models {
+    padding: 20px 16px 60px;
+  }
+
+  .home-models-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+  }
+
+  .home-model-card {
+    padding: 20px;
+  }
+
+  .home-nav-link {
+    padding: 6px 12px;
+    font-size: 13px;
+  }
+
+  .home-nav-link-primary {
+    padding: 8px 16px;
+  }
+}
+
+@media (max-width: 480px) {
+  .home-models-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .home-header-right {
+    gap: 8px;
+  }
+
+  .home-cta-button {
+    padding: 14px 28px;
+    font-size: 15px;
+  }
+}

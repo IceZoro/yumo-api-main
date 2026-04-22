@@ -21,87 +21,39 @@ import {
   createContext,
   useCallback,
   useContext,
-  useState,
   useEffect,
 } from 'react';
 
-const ThemeContext = createContext(null);
+const ThemeContext = createContext('dark');
 export const useTheme = () => useContext(ThemeContext);
 
-const ActualThemeContext = createContext(null);
+const ActualThemeContext = createContext('dark');
 export const useActualTheme = () => useContext(ActualThemeContext);
 
 const SetThemeContext = createContext(null);
 export const useSetTheme = () => useContext(SetThemeContext);
 
-// 检测系统主题偏好
-const getSystemTheme = () => {
-  if (typeof window !== 'undefined' && window.matchMedia) {
-    return window.matchMedia('(prefers-color-scheme: dark)').matches
-      ? 'dark'
-      : 'light';
-  }
-  return 'light';
-};
-
 export const ThemeProvider = ({ children }) => {
-  const [theme, _setTheme] = useState(() => {
-    try {
-      return localStorage.getItem('theme-mode') || 'auto';
-    } catch {
-      return 'auto';
-    }
-  });
+  // 始终强制深色模式，忽略 localStorage 和系统偏好
+  const theme = 'dark';
+  const actualTheme = 'dark';
 
-  const [systemTheme, setSystemTheme] = useState(getSystemTheme());
-
-  // 计算实际应用的主题
-  const actualTheme = theme === 'auto' ? systemTheme : theme;
-
-  // 监听系统主题变化
+  // 始终将 body 设置为深色模式
   useEffect(() => {
-    if (typeof window !== 'undefined' && window.matchMedia) {
-      const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-
-      const handleSystemThemeChange = (e) => {
-        setSystemTheme(e.matches ? 'dark' : 'light');
-      };
-
-      mediaQuery.addEventListener('change', handleSystemThemeChange);
-
-      return () => {
-        mediaQuery.removeEventListener('change', handleSystemThemeChange);
-      };
+    const body = document.body;
+    body.setAttribute('theme-mode', 'dark');
+    document.documentElement.classList.add('dark');
+    // 覆盖 localStorage 中可能存在的浅色模式设置
+    try {
+      localStorage.setItem('theme-mode', 'dark');
+    } catch {
+      // ignore
     }
   }, []);
 
-  // 应用主题到DOM
-  useEffect(() => {
-    const body = document.body;
-    if (actualTheme === 'dark') {
-      body.setAttribute('theme-mode', 'dark');
-      document.documentElement.classList.add('dark');
-    } else {
-      body.removeAttribute('theme-mode');
-      document.documentElement.classList.remove('dark');
-    }
-  }, [actualTheme]);
-
-  const setTheme = useCallback((newTheme) => {
-    let themeValue;
-
-    if (typeof newTheme === 'boolean') {
-      // 向后兼容原有的 boolean 参数
-      themeValue = newTheme ? 'dark' : 'light';
-    } else if (typeof newTheme === 'string') {
-      // 新的字符串参数支持 'light', 'dark', 'auto'
-      themeValue = newTheme;
-    } else {
-      themeValue = 'auto';
-    }
-
-    _setTheme(themeValue);
-    localStorage.setItem('theme-mode', themeValue);
+  // setTheme 保留但不生效，保持接口兼容
+  const setTheme = useCallback(() => {
+    // 强制深色模式，忽略切换请求
   }, []);
 
   return (

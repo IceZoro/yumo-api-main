@@ -25,7 +25,7 @@ import { UserProvider } from './context/User';
 import 'react-toastify/dist/ReactToastify.css';
 import { StatusProvider } from './context/Status';
 import { ThemeProvider } from './context/Theme';
-import PageLayout from './components/layout/PageLayout';
+import PageLayout from './custom/components/Layout/PageLayout';
 import './i18n/i18n';
 import './index.css';
 import { LocaleProvider } from '@douyinfe/semi-ui';

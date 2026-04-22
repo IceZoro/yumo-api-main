@@ -1,0 +1,1444 @@
+/*
+Copyright (C) 2025 QuantumNous
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU Affero General Public License as
+published by the Free Software Foundation, either version 3 of the
+License, or (at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+GNU Affero General Public License for more details.
+
+You should have received a copy of the GNU Affero General Public License
+along with this program. If not, see <https://www.gnu.org/licenses/>.
+
+For commercial licensing, please contact support@quantumnous.com
+*/
+
+/* ==================== 页面整体 ==================== */
+.ig-page {
+  min-height: calc(100vh - 120px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 80px 24px 40px;
+  background: var(--semi-color-bg-0, #f5f5f5);
+}
+
+/* 深色模式 */
+body[theme-mode='dark'] .ig-page,
+.semi-always-dark .ig-page {
+  background: var(--semi-color-bg-0, #1a1a1a);
+}
+
+/* ==================== 整体大卡片容器 ==================== */
+.ig-container {
+  width: 100%;
+  max-width: 820px;
+  background: var(--semi-color-bg-1, #fff);
+  border-radius: 20px;
+  border: 1px solid var(--semi-color-border);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.06);
+  overflow: hidden;
+}
+
+/* ==================== 标题区 ==================== */
+.ig-hero {
+  text-align: center;
+  padding: 28px 24px 0;
+}
+
+.ig-hero-title {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--semi-color-text-0);
+  margin: 0 0 8px;
+}
+
+.ig-hero-subtitle {
+  font-size: 14px;
+  color: var(--semi-color-text-2);
+  margin: 0;
+}
+
+/* ==================== 生成面板 ==================== */
+.ig-panel {
+  width: 100%;
+  background: transparent;
+  border-radius: 0;
+  border: none;
+  padding: 16px 24px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  box-shadow: none;
+}
+
+/* 模式标签 */
+.ig-mode-tabs {
+  display: flex;
+  gap: 0;
+  background: var(--semi-color-fill-0, #f7f7f7);
+  border-radius: 12px;
+  padding: 3px;
+}
+
+.ig-mode-tab {
+  flex: 1;
+  padding: 8px 16px;
+  border: none;
+  background: transparent;
+  color: var(--semi-color-text-2);
+  font-size: 14px;
+  font-weight: 500;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.ig-mode-tab:hover {
+  color: var(--semi-color-text-1);
+}
+
+.ig-mode-tab.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.ig-mode-tab.disabled:hover {
+  color: var(--semi-color-text-2);
+}
+
+.ig-mode-tab.active {
+  background: var(--semi-color-bg-1, #fff);
+  color: var(--semi-color-primary);
+  font-weight: 600;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+}
+
+/* 提示词输入 */
+.ig-prompt-area {
+  width: 100%;
+}
+
+.ig-prompt-input {
+  width: 100%;
+  padding: 12px 16px;
+  border: 1px solid var(--semi-color-border);
+  border-radius: 12px;
+  background: var(--semi-color-fill-0, #f7f7f7);
+  color: var(--semi-color-text-0);
+  font-size: 14px;
+  line-height: 1.6;
+  resize: none;
+  outline: none;
+  transition: border-color 0.2s ease, background 0.2s ease;
+  font-family: inherit;
+}
+
+.ig-prompt-input:focus {
+  border-color: var(--semi-color-primary);
+  background: var(--semi-color-bg-1, #fff);
+}
+
+.ig-prompt-input::placeholder {
+  color: var(--semi-color-text-3);
+}
+
+/* 参考图预览 */
+.ig-ref-image-preview {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 8px;
+  padding: 8px 10px;
+  background: var(--semi-color-fill-0, #f7f7f7);
+  border: 1px solid var(--semi-color-border);
+  border-radius: 10px;
+}
+
+.ig-ref-image-thumb {
+  width: 48px;
+  height: 48px;
+  border-radius: 6px;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.ig-ref-image-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.ig-ref-image-name {
+  font-size: 13px;
+  color: var(--semi-color-text-0);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ig-ref-image-label {
+  font-size: 11px;
+  color: var(--semi-color-primary);
+  font-weight: 500;
+}
+
+.ig-ref-image-remove {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: transparent;
+  color: var(--semi-color-text-3);
+  border-radius: 6px;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all 0.2s;
+}
+
+.ig-ref-image-remove:hover {
+  background: var(--semi-color-danger-light-default, #ffece8);
+  color: var(--semi-color-danger, #e74c3c);
+}
+
+/* 操作栏 */
+.ig-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.ig-toolbar-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.ig-toolbar-right {
+  flex-shrink: 0;
+}
+
+/* 风格模型按钮 */
+.ig-btn-style-model {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  background: var(--semi-color-primary);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.ig-btn-style-model:hover {
+  opacity: 0.9;
+  filter: brightness(1.05);
+}
+
+/* +图片按钮 */
+.ig-btn-add-image {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  background: transparent;
+  color: var(--semi-color-text-1);
+  border: 1px solid var(--semi-color-border);
+  border-radius: 8px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.ig-btn-add-image:hover {
+  border-color: var(--semi-color-primary);
+  color: var(--semi-color-primary);
+}
+
+.ig-btn-add-image.has-image {
+  border-color: var(--semi-color-primary);
+  color: var(--semi-color-primary);
+  background: var(--semi-color-primary-light-default, #e6f4ff);
+}
+
+/* 模型下拉 */
+.ig-model-select {
+  min-width: 180px;
+}
+
+.ig-btn-refresh-models {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--semi-color-border);
+  border-radius: 8px;
+  background: var(--semi-color-bg-2);
+  color: var(--semi-color-text-2);
+  cursor: pointer;
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+
+.ig-btn-refresh-models:hover:not(:disabled) {
+  border-color: var(--semi-color-primary);
+  color: var(--semi-color-primary);
+}
+
+.ig-btn-refresh-models:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.ig-model-select .semi-select-selection {
+  border-radius: 8px !important;
+  font-size: 13px;
+}
+
+.ig-model-tag {
+  margin-left: 6px;
+  padding: 1px 6px;
+  background: var(--semi-color-warning-light-default, #FFF7E6);
+  color: var(--semi-color-warning-dark, #D4A017);
+  border-radius: 4px;
+  font-size: 11px;
+}
+
+/* 比例按钮 */
+.ig-btn-ratio {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 7px 12px;
+  background: transparent;
+  color: var(--semi-color-text-1);
+  border: 1px solid var(--semi-color-border);
+  border-radius: 8px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.ig-btn-ratio:hover {
+  border-color: var(--semi-color-primary);
+  color: var(--semi-color-primary);
+}
+
+/* 设置按钮 */
+.ig-btn-settings {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 7px;
+  background: transparent;
+  border: 1px solid var(--semi-color-border);
+  border-radius: 8px;
+  color: var(--semi-color-text-2);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.ig-btn-settings:hover {
+  border-color: var(--semi-color-primary);
+  color: var(--semi-color-primary);
+}
+
+/* 生成按钮 */
+.ig-btn-generate {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 24px;
+  background: var(--semi-color-primary);
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.ig-btn-generate:hover {
+  opacity: 0.9;
+  filter: brightness(1.05);
+}
+
+.ig-btn-generate.disabled {
+  background: var(--semi-color-disabled-bg, #ccc);
+  color: var(--semi-color-disabled-text, #999);
+  cursor: not-allowed;
+}
+
+.ig-generating-text {
+  animation: ig-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes ig-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+/* ==================== 最近生成展示区 ==================== */
+.ig-recent-section {
+  width: 100%;
+  padding: 20px 24px 16px;
+  border-top: 1px solid var(--semi-color-border);
+}
+
+.ig-recent-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.ig-recent-header h3 {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--semi-color-text-0);
+  margin: 0;
+}
+
+.ig-recent-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 12px;
+}
+
+.ig-recent-card {
+  position: relative;
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--semi-color-bg-3);
+  border: 1px solid var(--semi-color-border);
+  transition: all 0.2s;
+}
+
+.ig-recent-card:hover {
+  border-color: var(--semi-color-primary-light-default, var(--semi-color-primary));
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.ig-recent-image {
+  width: 100%;
+  aspect-ratio: 3/4;
+  object-fit: cover;
+  display: block;
+  cursor: pointer;
+}
+
+.ig-recent-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 40px;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.ig-recent-card:hover .ig-recent-overlay {
+  opacity: 1;
+}
+
+.ig-recent-action {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255, 255, 255, 0.9);
+  color: var(--semi-color-text-0);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.ig-recent-action:hover {
+  background: #fff;
+  transform: scale(1.1);
+}
+
+.ig-recent-loading {
+  width: 100%;
+  aspect-ratio: 3/4;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: var(--semi-color-text-2);
+  font-size: 13px;
+}
+
+.ig-recent-failed {
+  width: 100%;
+  aspect-ratio: 3/4;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: var(--semi-color-danger, #e74c3c);
+  font-size: 12px;
+  text-align: center;
+  padding: 12px;
+}
+
+.ig-recent-progress {
+  font-size: 12px;
+  color: var(--semi-color-primary);
+  font-weight: 500;
+}
+
+.ig-recent-info {
+  padding: 6px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-height: 36px;
+}
+
+.ig-recent-model {
+  font-size: 11px;
+  color: var(--semi-color-primary);
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ig-recent-prompt {
+  font-size: 12px;
+  color: var(--semi-color-text-2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ==================== 灵感示例区 ==================== */
+.ig-inspiration {
+  width: 100%;
+  padding: 20px 24px 24px;
+  border-top: 1px solid var(--semi-color-border);
+}
+
+.ig-inspiration-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.ig-inspiration-header h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--semi-color-text-0);
+}
+
+.ig-btn-more {
+  background: none;
+  border: none;
+  color: var(--semi-color-text-2);
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.ig-btn-more:hover {
+  color: var(--semi-color-primary);
+}
+
+.ig-inspiration-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+
+.ig-inspiration-card {
+  background: var(--semi-color-bg-0, #f5f5f5);
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid var(--semi-color-border);
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+
+.ig-inspiration-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+}
+
+.ig-inspiration-img-wrap {
+  position: relative;
+  aspect-ratio: 3/4;
+  overflow: hidden;
+}
+
+.ig-inspiration-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.ig-inspiration-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.ig-inspiration-card:hover .ig-inspiration-overlay {
+  opacity: 1;
+}
+
+.ig-btn-makesame {
+  padding: 8px 20px;
+  background: #fff;
+  color: #333;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.ig-btn-makesame:hover {
+  background: var(--semi-color-primary);
+  color: #fff;
+}
+
+.ig-inspiration-info {
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ig-inspiration-model {
+  font-size: 12px;
+  color: var(--semi-color-text-3);
+}
+
+.ig-inspiration-title {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--semi-color-text-0);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ==================== 通用弹窗遮罩 ==================== */
+.ig-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+/* ==================== 风格模型弹窗 ==================== */
+.ig-style-modal {
+  width: 90%;
+  max-width: 800px;
+  max-height: 80vh;
+  background: var(--semi-color-bg-1, #fff);
+  border-radius: 16px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.ig-style-modal-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--semi-color-border);
+}
+
+.ig-style-modal-tabs {
+  display: flex;
+  gap: 0;
+  background: var(--semi-color-fill-0, #f0f0f0);
+  border-radius: 8px;
+  padding: 2px;
+}
+
+.ig-style-tab {
+  padding: 6px 16px;
+  border: none;
+  background: transparent;
+  color: var(--semi-color-text-2);
+  font-size: 13px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.ig-style-tab.active {
+  background: var(--semi-color-bg-1, #fff);
+  color: var(--semi-color-primary);
+  font-weight: 500;
+}
+
+.ig-style-modal-search {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  background: var(--semi-color-fill-0, #f5f5f5);
+  border-radius: 8px;
+  color: var(--semi-color-text-3);
+}
+
+.ig-style-search-input {
+  flex: 1;
+  border: none;
+  background: transparent;
+  color: var(--semi-color-text-0);
+  font-size: 13px;
+  outline: none;
+}
+
+.ig-style-search-input::placeholder {
+  color: var(--semi-color-text-3);
+}
+
+.ig-style-modal-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px;
+  background: transparent;
+  border: none;
+  color: var(--semi-color-text-2);
+  cursor: pointer;
+  border-radius: 6px;
+}
+
+.ig-style-modal-close:hover {
+  background: var(--semi-color-fill-0, #f0f0f0);
+}
+
+/* 分类筛选 */
+.ig-style-categories {
+  display: flex;
+  gap: 8px;
+  padding: 12px 20px;
+  overflow-x: auto;
+  border-bottom: 1px solid var(--semi-color-border);
+}
+
+.ig-style-categories::-webkit-scrollbar {
+  display: none;
+}
+
+.ig-category-btn {
+  padding: 6px 14px;
+  background: transparent;
+  border: 1px solid var(--semi-color-border);
+  border-radius: 20px;
+  color: var(--semi-color-text-1);
+  font-size: 13px;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.ig-category-btn:hover {
+  border-color: var(--semi-color-primary);
+  color: var(--semi-color-primary);
+}
+
+.ig-category-btn.active {
+  background: var(--semi-color-primary);
+  color: #fff;
+  border-color: var(--semi-color-primary);
+}
+
+/* 模型网格 */
+.ig-style-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 12px;
+  padding: 16px 20px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.ig-style-card {
+  border: 1px solid var(--semi-color-border);
+  border-radius: 10px;
+  overflow: hidden;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.ig-style-card:hover {
+  border-color: var(--semi-color-primary);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.ig-style-card.selected {
+  border-color: var(--semi-color-primary);
+  border-width: 2px;
+}
+
+.ig-style-card-thumb {
+  position: relative;
+  aspect-ratio: 3/2;
+  overflow: hidden;
+}
+
+.ig-style-card-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.ig-style-card-tag {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  padding: 2px 8px;
+  background: var(--semi-color-primary);
+  color: #fff;
+  font-size: 11px;
+  border-radius: 4px;
+  font-weight: 500;
+}
+
+.ig-style-card-info {
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.ig-style-card-name {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--semi-color-text-0);
+}
+
+.ig-style-card-desc {
+  font-size: 12px;
+  color: var(--semi-color-text-2);
+}
+
+.ig-style-card-stats {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--semi-color-text-3);
+  font-size: 12px;
+  margin-top: 2px;
+}
+
+/* 空状态 */
+.ig-style-empty {
+  grid-column: 1 / -1;
+  padding: 40px 20px;
+  text-align: center;
+  color: var(--semi-color-text-2);
+  font-size: 14px;
+}
+
+/* ==================== 参数设置弹窗 ==================== */
+.ig-params-modal {
+  width: 90%;
+  max-width: 400px;
+  background: var(--semi-color-bg-1, #fff);
+  border-radius: 16px;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.ig-params-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ig-params-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--semi-color-text-0);
+}
+
+.ig-params-options {
+  display: flex;
+  gap: 8px;
+}
+
+.ig-params-option {
+  flex: 1;
+  padding: 8px 12px;
+  border: 1px solid var(--semi-color-border);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--semi-color-text-1);
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: center;
+}
+
+.ig-params-option:hover {
+  border-color: var(--semi-color-primary);
+}
+
+.ig-params-option.active {
+  background: var(--semi-color-primary-light-default, #e6f4ff);
+  border-color: var(--semi-color-primary);
+  color: var(--semi-color-primary);
+  font-weight: 500;
+}
+
+/* 比例网格 */
+.ig-ratio-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+
+.ig-ratio-btn {
+  padding: 8px;
+  border: 1px solid var(--semi-color-border);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--semi-color-text-1);
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.ig-ratio-label {
+  font-weight: 500;
+}
+
+.ig-ratio-size {
+  font-size: 10px;
+  color: var(--semi-color-text-3);
+}
+
+.ig-ratio-btn:hover {
+  border-color: var(--semi-color-primary);
+}
+
+.ig-ratio-btn.active {
+  background: var(--semi-color-primary-light-default, #e6f4ff);
+  border-color: var(--semi-color-primary);
+  color: var(--semi-color-primary);
+  font-weight: 500;
+}
+
+/* 自定义尺寸 */
+.ig-custom-size {
+  display: flex;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.ig-size-input-group {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ig-size-input-group label {
+  font-size: 13px;
+  color: var(--semi-color-text-2);
+  font-weight: 500;
+}
+
+.ig-size-input {
+  flex: 1;
+  padding: 6px 10px;
+  border: 1px solid var(--semi-color-border);
+  border-radius: 6px;
+  background: var(--semi-color-fill-0, #f5f5f5);
+  color: var(--semi-color-text-0);
+  font-size: 13px;
+  outline: none;
+  width: 100%;
+}
+
+.ig-size-input:focus {
+  border-color: var(--semi-color-primary);
+}
+
+.ig-params-confirm {
+  margin-top: 4px;
+}
+
+/* ==================== 我的资产面板 ==================== */
+.ig-assets-panel {
+  width: 100%;
+  padding: 0 24px 24px;
+  border-top: 1px solid var(--semi-color-border);
+}
+
+.ig-assets-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 0 12px;
+}
+
+.ig-assets-header-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--semi-color-text-0);
+}
+
+.ig-assets-header-left h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.ig-assets-count {
+  padding: 1px 8px;
+  background: var(--semi-color-fill-1, #e0e0e0);
+  border-radius: 10px;
+  font-size: 12px;
+  color: var(--semi-color-text-2);
+  font-weight: 500;
+}
+
+.ig-assets-header-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ig-btn-clear {
+  padding: 4px 12px;
+  background: transparent;
+  border: 1px solid var(--semi-color-border);
+  border-radius: 6px;
+  color: var(--semi-color-text-2);
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.ig-btn-clear:hover {
+  border-color: var(--semi-color-danger, #e74c3c);
+  color: var(--semi-color-danger, #e74c3c);
+}
+
+.ig-btn-close-assets {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+  background: transparent;
+  border: none;
+  color: var(--semi-color-text-2);
+  cursor: pointer;
+  border-radius: 4px;
+}
+
+.ig-btn-close-assets:hover {
+  background: var(--semi-color-fill-0, #f0f0f0);
+  color: var(--semi-color-text-0);
+}
+
+.ig-assets-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 420px;
+  overflow-y: auto;
+}
+
+.ig-assets-list::-webkit-scrollbar {
+  width: 4px;
+}
+
+.ig-assets-list::-webkit-scrollbar-thumb {
+  background: var(--semi-color-border);
+  border-radius: 2px;
+}
+
+.ig-assets-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 40px 20px;
+  color: var(--semi-color-text-3);
+  font-size: 14px;
+}
+
+/* 单个资产卡片 */
+.ig-asset-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  background: var(--semi-color-fill-0, #f7f7f7);
+  border-radius: 10px;
+  border: 1px solid var(--semi-color-border);
+  transition: all 0.2s;
+}
+
+.ig-asset-card:hover {
+  border-color: var(--semi-color-primary-light-hover, #d0e8ff);
+}
+
+/* 缩略图 */
+.ig-asset-thumb {
+  width: 72px;
+  height: 72px;
+  border-radius: 8px;
+  overflow: hidden;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--semi-color-fill-1, #e8e8e8);
+}
+
+.ig-asset-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+
+.ig-asset-image:hover {
+  transform: scale(1.05);
+}
+
+.ig-asset-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  color: var(--semi-color-primary);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.ig-asset-failed {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  color: var(--semi-color-danger, #e74c3c);
+  font-size: 11px;
+  text-align: center;
+  padding: 4px;
+}
+
+.ig-spin {
+  animation: ig-spin-anim 1s linear infinite;
+}
+
+@keyframes ig-spin-anim {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* 信息区域 */
+.ig-asset-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ig-asset-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ig-asset-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.ig-status-success {
+  color: var(--semi-color-success, #00b42a);
+}
+
+.ig-status-failure {
+  color: var(--semi-color-danger, #e74c3c);
+}
+
+.ig-status-pending {
+  color: var(--semi-color-warning, #ff7d00);
+}
+
+.ig-status-progress {
+  color: var(--semi-color-primary);
+}
+
+.ig-asset-model {
+  font-size: 12px;
+  color: var(--semi-color-text-3);
+  background: var(--semi-color-fill-1, #e8e8e8);
+  padding: 1px 6px;
+  border-radius: 4px;
+}
+
+.ig-asset-prompt {
+  margin: 0;
+  font-size: 13px;
+  color: var(--semi-color-text-1);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 1.4;
+}
+
+.ig-asset-time {
+  font-size: 11px;
+  color: var(--semi-color-text-3);
+}
+
+/* 操作按钮 */
+.ig-asset-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.ig-asset-action-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border: none;
+  background: transparent;
+  color: var(--semi-color-text-2);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.ig-asset-action-btn:hover {
+  background: var(--semi-color-fill-1, #e8e8e8);
+  color: var(--semi-color-text-0);
+}
+
+.ig-asset-delete-btn:hover {
+  background: var(--semi-color-danger-light-default, #ffece8);
+  color: var(--semi-color-danger, #e74c3c);
+}
+
+/* ==================== 图片预览弹窗 ==================== */
+.ig-preview-modal {
+  width: 90%;
+  max-width: 700px;
+  max-height: 85vh;
+  background: var(--semi-color-bg-1, #fff);
+  border-radius: 16px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.ig-preview-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--semi-color-border);
+}
+
+.ig-preview-model {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--semi-color-text-1);
+}
+
+.ig-preview-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.ig-preview-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+  background: transparent;
+  border: none;
+  color: var(--semi-color-text-2);
+  cursor: pointer;
+  border-radius: 4px;
+}
+
+.ig-preview-close:hover {
+  color: var(--semi-color-text-0);
+  background: var(--semi-color-fill-0);
+}
+
+.ig-preview-body {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  overflow: auto;
+  background: var(--semi-color-fill-0, #f7f7f7);
+}
+
+.ig-preview-image {
+  max-width: 100%;
+  max-height: 60vh;
+  object-fit: contain;
+  border-radius: 8px;
+}
+
+.ig-preview-footer {
+  padding: 12px 16px;
+  border-top: 1px solid var(--semi-color-border);
+}
+
+.ig-preview-footer p {
+  margin: 0;
+  font-size: 13px;
+  color: var(--semi-color-text-2);
+  line-height: 1.5;
+}
+
+/* ==================== 响应式 ==================== */
+@media (max-width: 768px) {
+  .ig-page {
+    padding: 16px 12px 32px;
+  }
+
+  .ig-hero-title {
+    font-size: 22px;
+  }
+
+  .ig-panel {
+    padding: 14px;
+  }
+
+  .ig-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .ig-toolbar-left {
+    flex-wrap: wrap;
+  }
+
+  .ig-toolbar-right {
+    display: flex;
+    justify-content: flex-end;
+  }
+
+  .ig-inspiration-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+  }
+
+  .ig-style-modal {
+    width: 95%;
+  }
+
+  .ig-style-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .ig-model-select {
+    min-width: 140px;
+  }
+
+  .ig-ratio-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+
+  .ig-asset-card {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .ig-asset-thumb {
+    width: 100%;
+    height: 120px;
+  }
+
+  .ig-asset-actions {
+    justify-content: flex-end;
+  }
+}
+
+@media (max-width: 480px) {
+  .ig-inspiration-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .ig-style-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .ig-mode-tabs {
+    overflow-x: auto;
+  }
+
+  .ig-mode-tab {
+    font-size: 13px;
+    padding: 6px 12px;
+  }
+}
