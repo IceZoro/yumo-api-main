@@ -65,15 +65,17 @@ const PageLayout = () => {
 
   const shouldHideFooter = cardProPages.includes(location.pathname);
 
-  const isCustomPage = ['/', '/image-generator', '/asset'].includes(location.pathname);
+  const isCustomPage = ['/'].includes(location.pathname);
 
   const shouldInnerPadding =
-    location.pathname.includes('/console') &&
+    (location.pathname.includes('/console') ||
+     ['/image-generator', '/asset'].includes(location.pathname)) &&
     !location.pathname.startsWith('/console/chat') &&
     location.pathname !== '/console/playground';
 
   const isConsoleRoute = location.pathname.startsWith('/console');
-  const showSider = isConsoleRoute && (!isMobile || drawerOpen);
+  const isSiderPage = isConsoleRoute || ['/image-generator', '/asset'].includes(location.pathname);
+  const showSider = isSiderPage && (!isMobile || drawerOpen);
 
   const authRoutes = ['/login', '/register', '/reset', '/user/reset'];
   const isAuthRoute = authRoutes.some(
