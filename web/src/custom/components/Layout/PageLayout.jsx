@@ -103,6 +103,10 @@ const PageLayout = () => {
       if (success) {
         statusDispatch({ type: 'set', payload: data });
         setStatusData(data);
+        // 后端返回新的系统名称后同步更新页面标题
+        if (data.system_name) {
+          document.title = data.system_name;
+        }
       } else {
         showError('Unable to connect to server');
       }

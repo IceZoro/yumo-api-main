@@ -17,10 +17,11 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 
-import React, { useState, useCallback, useEffect, useRef } from 'react';
+import React, { useState, useCallback, useEffect, useRef, useContext } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button, Select, Toast, Modal, Spin } from '@douyinfe/semi-ui';
 import { API, showError } from '@/helpers';
+import { UserContext } from '@/context/User';
 import { fetchTokenKey } from '@/helpers/token';
 import {
   Sparkles,
@@ -131,24 +132,48 @@ const ImageGenerator = () => {
   const [referenceImage, setReferenceImage] = useState(null); // { url: base64/data-url, name: filename }
   const refImageInputRef = useRef(null);
 
-  // 生成资产列表 - 从 localStorage 初始化，保留所有状态记录
+  // 获取当前用户ID，用于localStorage隔离
+  // userLoaded: 用户状态是否已从后端/缓存加载完毕（避免初始化时 userId 为 'guest' 导致数据丢失）
+  const [userState] = useContext(UserContext);
+  const userLoaded = userState?.user !== undefined;
+  const userId = userState?.user?.id || 'guest';
+  const assetStorageKey = `ig_assets_${userId}`;
+
+  // 生成资产列表 - 初始加载时先读 'guest' key 以外的任意已有 key
+  // 避免 userId 异步变化时两次 setAssets 互相覆盖
   const [assets, setAssets] = useState(() => {
     try {
-      const saved = localStorage.getItem('ig_assets');
+      const saved = localStorage.getItem(assetStorageKey);
       return saved ? JSON.parse(saved) : [];
     } catch { return []; }
   });
   const [showAssets, setShowAssets] = useState(false);
   const [previewImage, setPreviewImage] = useState(null);
-  const pollTimerRef = useRef(null);
+  // 用 Map 存储多个任务的轮询定时器，key 为 assetId
+  const pollTimersRef = useRef(new Map());
 
   // 同步 assets 到 localStorage（保留所有记录，最多100条）
+  // 仅在 userLoaded 后才写入，避免将空数组写入真实用户的 key
   useEffect(() => {
+    if (!userLoaded) return;
     try {
       const toSave = assets.slice(0, 100);
-      localStorage.setItem('ig_assets', JSON.stringify(toSave));
+      localStorage.setItem(assetStorageKey, JSON.stringify(toSave));
     } catch { /* localStorage 满了就忽略 */ }
-  }, [assets]);
+  }, [assets, assetStorageKey, userLoaded]);
+
+  // 当用户ID变化时，重新加载该用户的资产，并停止旧的轮询
+  // 仅在 userLoaded 后响应，避免加载中状态误触发清空
+  useEffect(() => {
+    if (!userLoaded) return;
+    // 停止所有旧轮询
+    pollTimersRef.current.forEach((timerId) => clearTimeout(timerId));
+    pollTimersRef.current.clear();
+    try {
+      const saved = localStorage.getItem(assetStorageKey);
+      setAssets(saved ? JSON.parse(saved) : []);
+    } catch { setAssets([]); }
+  }, [assetStorageKey, userLoaded]);
 
   // 模式切换
   const handleModeSwitch = (key) => {
@@ -160,10 +185,12 @@ const ImageGenerator = () => {
   };
 
   // 加载生图模型列表
-  const fetchImageModels = useCallback(async () => {
+  const fetchImageModels = useCallback(async (forceRefresh = false) => {
     setModelsLoading(true);
     try {
-      const res = await API.get('/api/pricing');
+      // 强制刷新时加时间戳参数，绕过后端 1 分钟内存缓存
+      const url = forceRefresh ? `/api/pricing?_t=${Date.now()}` : '/api/pricing';
+      const res = await API.get(url, forceRefresh ? { disableDuplicate: true } : undefined);
       const { success, data } = res.data;
       if (success && Array.isArray(data)) {
         // 筛选支持 image-generation 端点的模型
@@ -185,12 +212,18 @@ const ImageGenerator = () => {
             setSelectedModel(imgModels[0].model_name);
           }
         }
+        if (forceRefresh) {
+          Toast.success(t('模型列表已刷新'));
+        }
       }
     } catch (error) {
       console.error('Failed to fetch image models:', error);
+      if (forceRefresh) {
+        Toast.error(t('刷新失败，请稍后重试'));
+      }
     }
     setModelsLoading(false);
-  }, [selectedModel]);
+  }, [selectedModel, t]);
 
   useEffect(() => {
     fetchImageModels();
@@ -270,7 +303,7 @@ const ImageGenerator = () => {
     }
   };
 
-  // 轮询任务状态
+  // 轮询任务状态（支持多任务并行轮询）
   const pollTaskStatus = useCallback((taskId, assetId) => {
     let attempts = 0;
     const maxAttempts = 120; // 最多轮询 120 次，每次 5s = 10 分钟
@@ -308,19 +341,59 @@ const ImageGenerator = () => {
           })
         );
 
-        // 如果任务还没完成，继续轮询
-        if (status !== 'success' && status !== 'completed' && status !== 'failed' && status !== 'failure' && attempts < maxAttempts) {
-          pollTimerRef.current = setTimeout(poll, 5000);
+        const isTerminal = status === 'success' || status === 'completed' || status === 'failed' || status === 'failure';
+        if (isTerminal) {
+          // 任务完成，清理该任务的轮询记录
+          pollTimersRef.current.delete(assetId);
+        } else if (attempts < maxAttempts) {
+          // 继续轮询
+          const timerId = setTimeout(poll, 5000);
+          pollTimersRef.current.set(assetId, timerId);
+        } else {
+          // 超出最大次数，标记为超时失败
+          setAssets((prev) =>
+            prev.map((a) =>
+              a.id === assetId && (a.status === 'in_progress' || a.status === 'queued' || a.status === 'submitted')
+                ? { ...a, status: 'failure', error: t('轮询超时，请刷新页面查看最终状态'), finishedAt: Date.now() }
+                : a
+            )
+          );
+          pollTimersRef.current.delete(assetId);
         }
       } catch (err) {
         console.error('Poll task error:', err);
         if (attempts < maxAttempts) {
-          pollTimerRef.current = setTimeout(poll, 5000);
+          const timerId = setTimeout(poll, 5000);
+          pollTimersRef.current.set(assetId, timerId);
+        } else {
+          pollTimersRef.current.delete(assetId);
         }
       }
     };
+    // 如果已有该任务的轮询，先停止旧的
+    if (pollTimersRef.current.has(assetId)) {
+      clearTimeout(pollTimersRef.current.get(assetId));
+    }
     poll();
-  }, []);
+  }, [t]);
+
+  // 页面加载/用户切换时，自动恢复未完成任务的轮询
+  // pollTaskStatusRef 用于在 useEffect 中安全引用最新的 pollTaskStatus
+  const pollTaskStatusRef = useRef(null);
+  pollTaskStatusRef.current = pollTaskStatus;
+
+  useEffect(() => {
+    const pendingStatuses = ['in_progress', 'queued', 'submitted'];
+    const pendingAssets = assets.filter(
+      (a) => pendingStatuses.includes(a.status) && a.taskId && !pollTimersRef.current.has(a.id)
+    );
+    pendingAssets.forEach((a) => {
+      console.log(`[ImageGenerator] 恢复任务轮询: assetId=${a.id}, taskId=${a.taskId}`);
+      pollTaskStatusRef.current(a.taskId, a.id);
+    });
+    // 只在 assetStorageKey 变化（用户切换）时执行，不跟随 assets 变化（避免死循环）
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [assetStorageKey]);
 
   // 生成
   const handleGenerate = useCallback(async () => {
@@ -343,6 +416,7 @@ const ImageGenerator = () => {
       model: selectedModel,
       status: 'in_progress',
       progress: '0%',
+      taskId: null,
       imageUrl: null,
       error: null,
       createdAt: Date.now(),
@@ -351,11 +425,60 @@ const ImageGenerator = () => {
 
     setAssets((prev) => [newAsset, ...prev]);
 
+    // 辅助函数：提取错误信息（展开多种格式）
+    const extractErrMsg = (err, fallback) => {
+      // axios 错误：HTTP 错误状态码对应的响应体
+      const respData = err?.response?.data;
+      if (respData) {
+        const msg = respData?.error?.message || respData?.message || respData?.msg || respData?.detail;
+        if (msg) return String(msg);
+        // 如果是字符串直接返回
+        if (typeof respData === 'string') return respData;
+      }
+      // 超时识别
+      if (err?.code === 'ECONNABORTED' || err?.message?.includes('timeout')) {
+        return t('请求超时，请检查网络或稍后重试');
+      }
+      return err?.message || fallback || t('请求失败');
+    };
+
+    // 辅助函数：从响应体中提取图片 URL（支持多种格式）
+    const extractImageUrl = (d) => {
+      if (!d) return null;
+      if (Array.isArray(d.data) && d.data.length > 0) {
+        return d.data[0]?.url || d.data[0]?.b64_json || null;
+      }
+      return d.result_url || d.url || d.output ||
+        (Array.isArray(d.images) && d.images.length > 0 ? (d.images[0]?.url || d.images[0]) : null) ||
+        null;
+    };
+
+    // 辅助函数：将资产更新为失败状态
+    const markFailure = (msg) => {
+      setAssets((prev) =>
+        prev.map((a) =>
+          a.id === assetId ? { ...a, status: 'failure', error: msg, finishedAt: Date.now() } : a
+        )
+      );
+    };
+
+    // 辅助函数：将资产更新为成功状态
+    const markSuccess = (imageUrl) => {
+      setAssets((prev) =>
+        prev.map((a) =>
+          a.id === assetId
+            ? { ...a, status: 'success', progress: '100%', imageUrl, finishedAt: Date.now() }
+            : a
+        )
+      );
+      Toast.success(t('图像生成成功'));
+    };
+
     try {
       // 获取用户令牌
       let tokenKey = '';
       try {
-        const tokenRes = await API.get('/api/token/?p=1&size=10');
+        const tokenRes = await API.get('/api/token/?p=1&size=10', { timeout: 10000 });
         const { success: tokenSuccess, data: tokenData } = tokenRes.data;
         if (tokenSuccess) {
           const tokenItems = Array.isArray(tokenData) ? tokenData : tokenData?.items || [];
@@ -364,23 +487,19 @@ const ImageGenerator = () => {
             tokenKey = await fetchTokenKey(activeToken.id);
           }
         }
-      } catch (_) {
-        // ignore
+      } catch (tokenErr) {
+        console.warn('[ImageGenerator] 获取令牌失败:', tokenErr?.message);
       }
 
       if (!tokenKey) {
-        setAssets((prev) =>
-          prev.map((a) =>
-            a.id === assetId
-              ? { ...a, status: 'failure', error: t('没有可用的API令牌，请先在令牌管理中创建'), finishedAt: Date.now() }
-              : a
-          )
-        );
+        markFailure(t('没有可用的API令牌，请先在令牌管理中创建'));
         setIsGenerating(false);
         return;
       }
 
       const authHeaders = { Authorization: `Bearer sk-${tokenKey}` };
+      // 生图最长等待 120s，应对模型较慢的情况
+      const REQUEST_TIMEOUT = 120000;
 
       // 判断模型类型：Gemini 系列走 chat completions，其他走 images/generations
       const isGeminiImageModel = selectedModel.startsWith('gemini-');
@@ -388,98 +507,71 @@ const ImageGenerator = () => {
 
       if (isGeminiImageModel) {
         // Gemini 模型通过 chat completions 生图
-        // 构建 content 数组：文本 + 参考图（如有）
-        const contentParts = [];
-        contentParts.push({ type: 'text', text: prompt });
+        const contentParts = [{ type: 'text', text: prompt }];
         if (referenceImage) {
-          // 提取 base64 数据和 mime type
           const refMatch = referenceImage.url.match(/^data:(image\/[^;]+);base64,(.+)$/);
           if (refMatch) {
-            contentParts.push({
-              type: 'image_url',
-              image_url: { url: referenceImage.url },
-            });
+            contentParts.push({ type: 'image_url', image_url: { url: referenceImage.url } });
           }
         }
         const chatRequestBody = {
           model: selectedModel,
           messages: [
-            { role: 'user', content: contentParts.length === 1 && contentParts[0].type === 'text' ? prompt : contentParts },
+            { role: 'user', content: contentParts.length === 1 ? prompt : contentParts },
           ],
         };
-        const res = await API.post('/v1/chat/completions', chatRequestBody, {
-          headers: authHeaders,
-        });
+
+        let res;
+        try {
+          res = await API.post('/v1/chat/completions', chatRequestBody, {
+            headers: authHeaders,
+            timeout: REQUEST_TIMEOUT,
+          });
+        } catch (reqErr) {
+          const errMsg = extractErrMsg(reqErr, t('请求失败'));
+          console.error('[ImageGenerator] Gemini 请求异常:', reqErr);
+          markFailure(errMsg);
+          showError(errMsg);
+          setIsGenerating(false);
+          return;
+        }
+
         data = res.data;
         console.log('[ImageGenerator] Chat API response:', JSON.stringify(data)?.slice(0, 800));
 
-        // 从 chat completions 响应中提取图片
-        // Gemini 返回的图片可能在 content 中作为 inline_data 或 base64
-        const choice = data.choices?.[0];
-        if (choice) {
-          const content = choice.message?.content || '';
-          // 尝试提取 base64 图片数据 (data:image/xxx;base64,...)
-          const base64Match = content.match(/data:image\/[^;]+;base64,[A-Za-z0-9+/=]+/);
-          if (base64Match) {
-            setAssets((prev) =>
-              prev.map((a) =>
-                a.id === assetId
-                  ? { ...a, status: 'success', progress: '100%', imageUrl: base64Match[0], finishedAt: Date.now() }
-                  : a
-              )
-            );
-            Toast.success(t('图像生成成功'));
-          } else if (data.error) {
-            setAssets((prev) =>
-              prev.map((a) =>
-                a.id === assetId
-                  ? { ...a, status: 'failure', error: data.error.message || t('生成失败'), finishedAt: Date.now() }
-                  : a
-              )
-            );
-            showError(data.error.message || t('图像生成失败'));
-          } else {
-            // Gemini 可能返回文本描述而非图片，或者图片以其他格式内嵌
-            // 尝试找 markdown 图片链接
-            const mdImageMatch = content.match(/!\[.*?\]\((data:image\/[^)]+)\)/);
-            const imageUrl = mdImageMatch ? mdImageMatch[1] : null;
-            if (imageUrl) {
-              setAssets((prev) =>
-                prev.map((a) =>
-                  a.id === assetId
-                    ? { ...a, status: 'success', progress: '100%', imageUrl, finishedAt: Date.now() }
-                    : a
-                )
-              );
-              Toast.success(t('图像生成成功'));
-            } else {
-              // 没有图片，可能是纯文本响应
-              setAssets((prev) =>
-                prev.map((a) =>
-                  a.id === assetId
-                    ? { ...a, status: 'failure', error: t('模型未返回图片，可能不支持图像生成'), finishedAt: Date.now() }
-                    : a
-                )
-              );
-            }
-          }
-        } else if (data.error) {
-          setAssets((prev) =>
-            prev.map((a) =>
-              a.id === assetId
-                ? { ...a, status: 'failure', error: data.error.message || t('生成失败'), finishedAt: Date.now() }
-                : a
-            )
-          );
-          showError(data.error.message || t('图像生成失败'));
+        // 先检查响应体层面的 error 字段
+        if (data?.error) {
+          const errMsg = data.error.message || t('生成失败');
+          markFailure(errMsg);
+          showError(errMsg);
         } else {
-          setAssets((prev) =>
-            prev.map((a) =>
-              a.id === assetId
-                ? { ...a, status: 'failure', error: t('未获取到图片结果'), finishedAt: Date.now() }
-                : a
-            )
-          );
+          const choice = data?.choices?.[0];
+          const rawContent = choice?.message?.content || '';
+          // content 可能是数组格式（多部分内容）
+          const contentStr = typeof rawContent === 'string'
+            ? rawContent
+            : JSON.stringify(rawContent);
+
+          // 优先尝试提取 base64 图片
+          const base64Match = contentStr.match(/data:image\/[^;]+;base64,[A-Za-z0-9+/=]+/);
+          // 其次尝试 markdown 图片链接
+          const mdImageMatch = contentStr.match(/!\[.*?\]\((data:image\/[^)]+)\)/);
+          // 最后尝试普通 URL
+          const urlMatch = contentStr.match(/https?:\/\/[^\s"'<>]+\.(?:png|jpg|jpeg|webp|gif)[^\s"'<>]*/i);
+
+          const imageUrl = base64Match?.[0] || mdImageMatch?.[1] || urlMatch?.[0] || null;
+
+          if (imageUrl) {
+            markSuccess(imageUrl);
+          } else if (choice) {
+            // 有响应但没图片
+            const detailMsg = contentStr.length > 0
+              ? t('模型未返回图片，可能不支持图像生成') + `：${contentStr.slice(0, 100)}`
+              : t('模型未返回图片，可能不支持图像生成');
+            markFailure(detailMsg);
+          } else {
+            markFailure(t('未获取到图片结果'));
+          }
         }
       } else {
         // 非 Gemini 模型走标准 /v1/images/generations
@@ -492,86 +584,56 @@ const ImageGenerator = () => {
           quality: ['hd2k', 'uhd3k'].includes(quality) ? 'hd' : 'standard',
           response_format: 'url',
         };
-        // 参考图：通过 image 字段传递 base64（Edits API 兼容）
         if (referenceImage) {
           requestBody.image = referenceImage.url;
         }
 
-        const res = await API.post('/v1/images/generations', requestBody, {
-          headers: authHeaders,
-        });
+        let res;
+        try {
+          res = await API.post('/v1/images/generations', requestBody, {
+            headers: authHeaders,
+            timeout: REQUEST_TIMEOUT,
+          });
+        } catch (reqErr) {
+          const errMsg = extractErrMsg(reqErr, t('请求失败'));
+          console.error('[ImageGenerator] 生图请求异常:', reqErr);
+          markFailure(errMsg);
+          showError(errMsg);
+          setIsGenerating(false);
+          return;
+        }
+
         data = res.data;
         console.log('[ImageGenerator] Image API response:', JSON.stringify(data)?.slice(0, 500));
 
-        // 检查是否是异步任务（返回 task_id）
-        if (data.id && data.status && data.status !== 'completed') {
-          // 异步任务模式
+        // 先检查响应体 error
+        if (data?.error) {
+          const errMsg = data.error.message || t('生成失败');
+          markFailure(errMsg);
+          showError(errMsg);
+        } else if (data?.id && data?.status && data.status !== 'completed') {
+          // 异步任务模式：返回 task_id
           setAssets((prev) =>
             prev.map((a) =>
               a.id === assetId ? { ...a, taskId: data.id, status: data.status } : a
             )
           );
           pollTaskStatus(data.id, assetId);
-        } else if (data.data && Array.isArray(data.data) && data.data.length > 0) {
-          // 同步返回模式 (OpenAI 格式: { data: [{url: ...}] })
-          const imageItem = data.data[0];
-          const imageUrl = imageItem.url || imageItem.b64_json;
-          setAssets((prev) =>
-            prev.map((a) =>
-              a.id === assetId
-                ? { ...a, status: 'success', progress: '100%', imageUrl, finishedAt: Date.now() }
-                : a
-            )
-          );
-          Toast.success(t('图像生成成功'));
-        } else if (data.error) {
-          setAssets((prev) =>
-            prev.map((a) =>
-              a.id === assetId
-                ? { ...a, status: 'failure', error: data.error.message || t('生成失败'), finishedAt: Date.now() }
-                : a
-            )
-          );
-          showError(data.error.message || t('图像生成失败'));
         } else {
-          // 尝试多种格式解析
-          let imageUrl = null;
-          if (Array.isArray(data?.data) && data.data[0]) {
-            imageUrl = data.data[0].url || data.data[0].b64_json;
-          }
-          if (!imageUrl && data.result_url) {
-            imageUrl = data.result_url;
-          }
-          if (!imageUrl && Array.isArray(data?.images) && data.images[0]) {
-            imageUrl = data.images[0].url || data.images[0];
-          }
-          if (!imageUrl && (data.output || data.url)) {
-            imageUrl = data.output || data.url;
-          }
-
+          // 同步返回模式：尝试多种格式解析
+          const imageUrl = extractImageUrl(data);
           if (imageUrl) {
-            setAssets((prev) =>
-              prev.map((a) =>
-                a.id === assetId
-                  ? { ...a, status: 'success', progress: '100%', imageUrl, finishedAt: Date.now() }
-                  : a
-              )
-            );
-            Toast.success(t('图像生成成功'));
+            markSuccess(imageUrl);
           } else {
-            console.warn('[ImageGenerator] Unrecognized response format:', data);
-            setAssets((prev) =>
-              prev.map((a) =>
-                a.id === assetId
-                  ? { ...a, status: 'failure', error: t('未获取到图片结果，请查看控制台日志'), finishedAt: Date.now() }
-                  : a
-              )
-            );
+            console.warn('[ImageGenerator] 无法识别的响应格式:', data);
+            markFailure(t('未获取到图片结果，请查看控制台日志'));
           }
         }
       }
     } catch (error) {
-      const errMsg = error?.response?.data?.error?.message || error?.message || t('请求失败');
+      // 捕获未预期的全局异常
+      const errMsg = extractErrMsg(error, t('未知错误'));
+      console.error('[ImageGenerator] 未预期异常:', error);
       setAssets((prev) =>
         prev.map((a) =>
           a.id === assetId
@@ -583,7 +645,7 @@ const ImageGenerator = () => {
     }
 
     setIsGenerating(false);
-  }, [prompt, selectedModel, count, ratio, quality, pollTaskStatus, t]);
+  }, [prompt, selectedModel, count, ratio, quality, referenceImage, pollTaskStatus, t]);
 
   // 做同款
   const handleMakeSame = (item) => {
@@ -642,12 +704,11 @@ const ImageGenerator = () => {
     }
   };
 
-  // 清理轮询定时器
+  // 清理轮询定时器（组件卸载时只清游标记器，不改变localStorage状态，下次进来可自动恢复）
   useEffect(() => {
     return () => {
-      if (pollTimerRef.current) {
-        clearTimeout(pollTimerRef.current);
-      }
+      pollTimersRef.current.forEach((timerId) => clearTimeout(timerId));
+      pollTimersRef.current.clear();
     };
   }, []);
 
@@ -749,7 +810,7 @@ const ImageGenerator = () => {
             </Select>
             <button
               className='ig-btn-refresh-models'
-              onClick={fetchImageModels}
+              onClick={() => fetchImageModels(true)}
               title={t('刷新模型列表')}
               disabled={modelsLoading}
             >
@@ -800,7 +861,7 @@ const ImageGenerator = () => {
           </div>
           <div className='ig-recent-grid'>
             {assets
-              .slice(0, 6)
+              .slice(0, 4)
               .map((asset) => (
                 <div key={asset.id} className='ig-recent-card'>
                   {asset.status === 'success' && asset.imageUrl ? (

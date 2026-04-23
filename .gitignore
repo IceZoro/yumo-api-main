@@ -31,3 +31,6 @@ data/
 .gopath
 
 token_estimator_test.go
+
+# 根目录下的截图文件
+/*.png

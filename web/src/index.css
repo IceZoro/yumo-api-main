@@ -1105,6 +1105,13 @@ html.dark .with-pastel-balls::before {
   border-radius: var(--ym-radius-md) !important;
 }
 
+/* Select 弹出层外层 wrapper 与内容圆角保持一致 */
+.semi-select-option-list-wrapper,
+.semi-popover-wrapper.semi-popover-wrapper-show {
+  border-radius: var(--ym-radius-md) !important;
+  overflow: hidden !important;
+}
+
 /* 标签 */
 .semi-tag,
 .semi-tag-closable {

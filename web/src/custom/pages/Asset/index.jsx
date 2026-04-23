@@ -17,10 +17,11 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useContext } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button, Select, Toast } from '@douyinfe/semi-ui';
 import { API, showError } from '@/helpers';
+import { UserContext } from '@/context/User';
 import {
   FolderOpen,
   Grid3X3,
@@ -52,6 +53,11 @@ const TYPE_OPTIONS = [
 
 const Asset = () => {
   const { t } = useTranslation();
+  const [userState] = useContext(UserContext);
+  // userLoaded: 用户状态已从后端/缓存加载完毕，避免 userId 异步变化导致读取错误 key
+  const userLoaded = userState?.user !== undefined;
+  const userId = userState?.user?.id || 'guest';
+  const assetStorageKey = `ig_assets_${userId}`;
   const [assets, setAssets] = useState([]);
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState('grid');
@@ -66,12 +72,14 @@ const Asset = () => {
 
   // 加载任务列表（后端 + localStorage）
   const fetchAssets = useCallback(async () => {
+    // 用户状态未就绪时不加载，避免用 guest key 读取空数据
+    if (!userLoaded) return;
     setLoading(true);
     try {
       // 1. 从 localStorage 加载本地生成的资产
       let localAssets = [];
       try {
-        const saved = localStorage.getItem('ig_assets');
+        const saved = localStorage.getItem(assetStorageKey);
         if (saved) {
           const parsed = JSON.parse(saved);
           if (Array.isArray(parsed)) {
@@ -148,7 +156,7 @@ const Asset = () => {
       console.error('Failed to fetch assets:', error);
     }
     setLoading(false);
-  }, []);
+  }, [assetStorageKey, userLoaded]);
 
   // 加载生图模型列表（用于区分类型）
   useEffect(() => {

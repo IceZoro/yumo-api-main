@@ -26,10 +26,11 @@ import { StatusContext } from '../../context/Status';
 const FooterBar = () => {
   const { t } = useTranslation();
   const [footer, setFooter] = useState(getFooterHTML());
-  const systemName = getSystemName();
-  const logo = getLogo();
   const [statusState] = useContext(StatusContext);
   const isDemoSiteMode = statusState?.status?.demo_site_enabled || false;
+  // 优先从 StatusContext 读取（后端推送后自动响应式更新），fallback 到 localStorage
+  const systemName = statusState?.status?.system_name || getSystemName();
+  const logo = statusState?.status?.logo || getLogo();
 
   const loadFooter = () => {
     let footer_html = localStorage.getItem('footer_html');

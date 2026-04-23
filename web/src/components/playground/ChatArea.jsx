@@ -50,6 +50,11 @@ const ChatArea = ({
     <Card
       className='h-full'
       bordered={false}
+      style={{
+        borderRadius: 24,
+        background: 'var(--semi-color-bg-1)',
+        border: '1px solid var(--semi-color-border)',
+      }}
       bodyStyle={{
         padding: 0,
         height: 'calc(100vh - 66px)',

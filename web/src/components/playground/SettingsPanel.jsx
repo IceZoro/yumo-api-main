@@ -60,6 +60,11 @@ const SettingsPanel = ({
     <Card
       className='h-full flex flex-col'
       bordered={false}
+      style={{
+        borderRadius: 24,
+        background: 'var(--semi-color-bg-1)',
+        border: '1px solid var(--semi-color-border)',
+      }}
       bodyStyle={{
         padding: styleState.isMobile ? '16px' : '24px',
         height: '100%',
@@ -139,7 +144,7 @@ const SettingsPanel = ({
             optionList={groups}
             renderOptionItem={renderGroupOption}
             style={{ width: '100%' }}
-            dropdownStyle={{ width: '100%', maxWidth: '100%' }}
+            dropdownStyle={{ width: '100%', maxWidth: '100%', borderRadius: 18, overflow: 'hidden' }}
             className='!rounded-lg'
             disabled={customRequestMode}
           />
@@ -170,7 +175,7 @@ const SettingsPanel = ({
             autoComplete='new-password'
             optionList={models}
             style={{ width: '100%' }}
-            dropdownStyle={{ width: '100%', maxWidth: '100%' }}
+            dropdownStyle={{ width: '100%', maxWidth: '100%', borderRadius: 18, overflow: 'hidden' }}
             className='!rounded-lg'
             disabled={customRequestMode}
           />

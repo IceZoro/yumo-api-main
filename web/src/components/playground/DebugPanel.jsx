@@ -100,6 +100,11 @@ const DebugPanel = ({
     <Card
       className='h-full flex flex-col'
       bordered={false}
+      style={{
+        borderRadius: 24,
+        background: 'var(--semi-color-bg-1)',
+        border: '1px solid var(--semi-color-border)',
+      }}
       bodyStyle={{
         padding: styleState.isMobile ? '16px' : '24px',
         height: '100%',

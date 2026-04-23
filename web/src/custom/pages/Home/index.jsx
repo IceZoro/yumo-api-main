@@ -17,10 +17,12 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 
-import React from 'react';
+import React, { useContext } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import logoConfig from '@/custom/config/logo-config';
+import { StatusContext } from '../../../context/Status';
+import { getSystemName, getLogo } from '../../../helpers';
 import {
   OpenAI,
   Claude,
@@ -43,6 +45,11 @@ const models = [
 const Home = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const [statusState] = useContext(StatusContext);
+
+  // 优先从 StatusContext 读取（后端推送后自动响应式更新），fallback 到 localStorage / 静态配置
+  const systemName = statusState?.status?.system_name || getSystemName() || logoConfig.name;
+  const logo = statusState?.status?.logo || getLogo() || logoConfig.logo;
 
   const handleGetStarted = () => {
     // 如果已登录则跳转到控制台，否则跳转到登录页
@@ -63,11 +70,11 @@ const Home = () => {
       <header className="home-header">
         <div className="home-header-left">
           <img
-            src={logoConfig.logo}
-            alt={logoConfig.logoAlt}
+            src={logo}
+            alt={systemName}
             className="home-logo"
           />
-          <span className="home-brand">{logoConfig.name}</span>
+          <span className="home-brand">{systemName}</span>
         </div>
         <div className="home-header-right">
           <Link to="/login" className="home-nav-link">
@@ -107,7 +114,7 @@ const Home = () => {
       {/* 底部页脚 */}
       <footer className="home-footer">
         <p className="home-footer-text">
-          © {new Date().getFullYear()} {logoConfig.name}. {t('版权所有')}
+          © {new Date().getFullYear()} {systemName}. {t('版权所有')}
         </p>
       </footer>
     </div>

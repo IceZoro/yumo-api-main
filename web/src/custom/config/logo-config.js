@@ -18,9 +18,9 @@ For commercial licensing, please contact support@quantumnous.com
 */
 
 const logoConfig = {
-  name: 'Yumo',
+  name: 'pivoxapi',
   logo: '/logo.svg',
-  logoAlt: 'Yumo AI Platform',
+  logoAlt: 'pivoxapi AI Platform',
   favicon: '/logo.svg',
 };
 

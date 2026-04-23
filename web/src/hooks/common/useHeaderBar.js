@@ -43,8 +43,8 @@ export const useHeaderBar = ({ onMobileMenuToggle, drawerOpen }) => {
   const loading = statusState?.status === undefined;
   const isLoading = useMinimumLoadingTime(loading, 200);
 
-  const systemName = getSystemName();
-  const logo = getLogo();
+  const systemName = statusState?.status?.system_name || getSystemName();
+  const logo = statusState?.status?.logo || getLogo();
   const currentDate = new Date();
   const isNewYear = currentDate.getMonth() === 0 && currentDate.getDate() === 1;
 
