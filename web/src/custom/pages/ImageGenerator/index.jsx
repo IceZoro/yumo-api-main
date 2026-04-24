@@ -41,6 +41,8 @@ import {
   Trash2,
   Images,
   RefreshCw,
+  ShieldAlert,
+  AlertCircle,
 } from 'lucide-react';
 import './ImageGenerator.css';
 
@@ -139,12 +141,37 @@ const ImageGenerator = () => {
   const userId = userState?.user?.id || 'guest';
   const assetStorageKey = `ig_assets_${userId}`;
 
-  // 生成资产列表 - 初始加载时先读 'guest' key 以外的任意已有 key
-  // 避免 userId 异步变化时两次 setAssets 互相覆盖
+  // 资产数据兼容处理：将 localStorage 中缺字段的旧数据补全默认字段
+  const normalizeAsset = (a) => ({
+    id: a.id ?? Date.now(),
+    prompt: a.prompt ?? '',
+    model: a.model ?? '',
+    status: a.status ?? 'failure',
+    progress: a.progress ?? '0%',
+    taskId: a.taskId ?? null,
+    imageUrl: a.imageUrl ?? null,
+    error: a.error ?? null,
+    createdAt: a.createdAt ?? Date.now(),
+    finishedAt: a.finishedAt ?? null,
+  });
+
+  // 生成资产列表 - 初始加载时尝试优先读取已登录用户的资产键，防止用 guest 键覆盖真实数据
   const [assets, setAssets] = useState(() => {
     try {
-      const saved = localStorage.getItem(assetStorageKey);
-      return saved ? JSON.parse(saved) : [];
+      // 先尝试从 localStorage 中找到已登录用户的真实 ID
+      let effectiveKey = assetStorageKey;
+      try {
+        const userRaw = localStorage.getItem('user');
+        if (userRaw) {
+          const userObj = JSON.parse(userRaw);
+          const realId = userObj?.id || userObj?.user?.id;
+          if (realId && realId !== 'guest') {
+            effectiveKey = `ig_assets_${realId}`;
+          }
+        }
+      } catch { /* 解析失败则用默认 key */ }
+      const saved = localStorage.getItem(effectiveKey);
+      return saved ? JSON.parse(saved).map(normalizeAsset) : [];
     } catch { return []; }
   });
   const [showAssets, setShowAssets] = useState(false);
@@ -170,8 +197,32 @@ const ImageGenerator = () => {
     pollTimersRef.current.forEach((timerId) => clearTimeout(timerId));
     pollTimersRef.current.clear();
     try {
-      const saved = localStorage.getItem(assetStorageKey);
-      setAssets(saved ? JSON.parse(saved) : []);
+      // 加载当前用户的已有资产
+      const savedRaw = localStorage.getItem(assetStorageKey);
+      const savedAssets = savedRaw ? JSON.parse(savedRaw).map(normalizeAsset) : [];
+
+      // 迁移：如果 guest key 下有资产（用户登录前生成的），合并到当前用户 key
+      if (userId !== 'guest') {
+        const guestKey = 'ig_assets_guest';
+        const guestRaw = localStorage.getItem(guestKey);
+        if (guestRaw) {
+          try {
+            const guestAssets = JSON.parse(guestRaw).map(normalizeAsset);
+            if (guestAssets.length > 0) {
+              // 合并：guest 资产放前面（更新），去重（以 id 为准）
+              const existingIds = new Set(savedAssets.map((a) => a.id));
+              const toMigrate = guestAssets.filter((a) => !existingIds.has(a.id));
+              const merged = [...toMigrate, ...savedAssets].slice(0, 100);
+              localStorage.removeItem(guestKey);
+              setAssets(merged);
+              return;
+            }
+          } catch { /* guest 数据损坏，忽略 */ }
+          localStorage.removeItem(guestKey);
+        }
+      }
+
+      setAssets(savedAssets);
     } catch { setAssets([]); }
   }, [assetStorageKey, userLoaded]);
 
@@ -193,13 +244,25 @@ const ImageGenerator = () => {
       const res = await API.get(url, forceRefresh ? { disableDuplicate: true } : undefined);
       const { success, data } = res.data;
       if (success && Array.isArray(data)) {
-        // 筛选支持 image-generation 端点的模型
-        const imgModels = data.filter(
-          (model) =>
+        // 筛选条件：tags 字段包含 "image" 标签，或 supported_endpoint_types 包含 image-generation（兼容旧配置）
+        const imgModels = data.filter((model) => {
+          // 检查 tags 字段（逗号/空格分隔的字符串）
+          if (model.tags && typeof model.tags === 'string') {
+            const tagList = model.tags.split(/[,\s]+/).map((t) => t.trim().toLowerCase());
+            if (tagList.some((tag) => tag === 'image' || tag.startsWith('image'))) {
+              return true;
+            }
+          }
+          // 兼容旧配置：检查 supported_endpoint_types
+          if (
             model.supported_endpoint_types &&
             Array.isArray(model.supported_endpoint_types) &&
             model.supported_endpoint_types.includes(IMAGE_ENDPOINT_TYPE)
-        );
+          ) {
+            return true;
+          }
+          return false;
+        });
         setImageModels(imgModels);
         // 默认选中第一个模型
         if (imgModels.length > 0 && !selectedModel) {
@@ -395,6 +458,59 @@ const ImageGenerator = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [assetStorageKey]);
 
+  // 识别内容安全/平台限制类错误
+  const isContentPolicyError = (msg) => {
+    if (!msg) return false;
+    const lower = String(msg).toLowerCase();
+    return (
+      lower.includes('safety') ||
+      lower.includes('content policy') ||
+      lower.includes('content_policy') ||
+      lower.includes('no images were generated') ||
+      lower.includes('moderation') ||
+      lower.includes('violat') ||
+      lower.includes('inappropriate') ||
+      lower.includes('harmful') ||
+      lower.includes('blocked') ||
+      lower.includes('content filter') ||
+      lower.includes('rejected') ||
+      lower.includes('内容审核') ||
+      lower.includes('安全审查') ||
+      lower.includes('违规') ||
+      lower.includes('不合适')
+    );
+  };
+
+  // 识别 token 超限类错误
+  const isTokenLimitError = (msg) => {
+    if (!msg) return false;
+    const lower = String(msg).toLowerCase();
+    return (
+      lower.includes('token over limit') ||
+      lower.includes('context length') ||
+      lower.includes('context_length_exceeded') ||
+      lower.includes('maximum context') ||
+      lower.includes('too many tokens') ||
+      lower.includes('max_tokens') ||
+      lower.includes('token limit') ||
+      lower.includes('over limit') ||
+      lower.includes('超过最大长度') ||
+      lower.includes('上下文过长') ||
+      lower.includes('token超限')
+    );
+  };
+
+  // 获取失败类型和提示信息
+  const getFailureHint = (msg) => {
+    if (isContentPolicyError(msg)) {
+      return { type: 'policy', hint: t('提示词可能触发内容安全策略，请修改后重试') };
+    }
+    if (isTokenLimitError(msg)) {
+      return { type: 'token', hint: t('提示词过长导致 token 超限，请简化描述后重试') };
+    }
+    return { type: 'error', hint: null };
+  };
+
   // 生成
   const handleGenerate = useCallback(async () => {
     if (!prompt.trim()) {
@@ -424,6 +540,37 @@ const ImageGenerator = () => {
     };
 
     setAssets((prev) => [newAsset, ...prev]);
+
+    // 假进度条：在同步请求期间模拟进度增长，让用户知道任务在进行
+    // 进度曲线：0 -> 30%(5s) -> 60%(15s) -> 80%(30s) -> 90%(60s) ，请求完成后立即跳到 100%
+    let fakeProgress = 0;
+    const fakeProgressTimer = { id: null };
+    const FAKE_PROGRESS_STEPS = [
+      { target: 30, delay: 5000 },
+      { target: 60, delay: 15000 },
+      { target: 80, delay: 30000 },
+      { target: 90, delay: 60000 },
+    ];
+    let stepIdx = 0;
+    const advanceFakeProgress = () => {
+      if (stepIdx >= FAKE_PROGRESS_STEPS.length) return;
+      const step = FAKE_PROGRESS_STEPS[stepIdx++];
+      fakeProgressTimer.id = setTimeout(() => {
+        fakeProgress = step.target;
+        setAssets((prev) =>
+          prev.map((a) =>
+            a.id === assetId && a.status === 'in_progress'
+              ? { ...a, progress: `${fakeProgress}%` }
+              : a
+          )
+        );
+        advanceFakeProgress();
+      }, step.delay);
+    };
+    advanceFakeProgress();
+    const stopFakeProgress = () => {
+      if (fakeProgressTimer.id) clearTimeout(fakeProgressTimer.id);
+    };
 
     // 辅助函数：提取错误信息（展开多种格式）
     const extractErrMsg = (err, fallback) => {
@@ -455,6 +602,7 @@ const ImageGenerator = () => {
 
     // 辅助函数：将资产更新为失败状态
     const markFailure = (msg) => {
+      stopFakeProgress();
       setAssets((prev) =>
         prev.map((a) =>
           a.id === assetId ? { ...a, status: 'failure', error: msg, finishedAt: Date.now() } : a
@@ -464,6 +612,7 @@ const ImageGenerator = () => {
 
     // 辅助函数：将资产更新为成功状态
     const markSuccess = (imageUrl) => {
+      stopFakeProgress();
       setAssets((prev) =>
         prev.map((a) =>
           a.id === assetId
@@ -501,12 +650,23 @@ const ImageGenerator = () => {
       // 生图最长等待 120s，应对模型较慢的情况
       const REQUEST_TIMEOUT = 120000;
 
-      // 判断模型类型：Gemini 系列走 chat completions，其他走 images/generations
-      const isGeminiImageModel = selectedModel.startsWith('gemini-');
+      // 判断请求方式：优先检查模型是否配置了 image-generation 端点类型
+      // 有 image-generation 端点 → 走 /v1/images/generations（标准生图 API）
+      // 没有 → fallback 到 /v1/chat/completions（兆容 Gemini 等通过对话形式返回图片的模型）
+      const selectedModelInfo = imageModels.find((m) => m.model_name === selectedModel);
+      const hasImageGenerationEndpoint =
+        selectedModelInfo?.supported_endpoint_types &&
+        Array.isArray(selectedModelInfo.supported_endpoint_types) &&
+        selectedModelInfo.supported_endpoint_types.includes(IMAGE_ENDPOINT_TYPE);
+      
+      // Gemini 模型即使配置了 image-generation 端点，也必须走 chat completions
+      // （Gemini 的 /images/generations 只支持 imagen 系列，普通 gemini-* 模型不支持）
+      const isGeminiModel = selectedModel.toLowerCase().startsWith('gemini-');
+      const useChatAPI = !hasImageGenerationEndpoint || isGeminiModel;
       let data;
 
-      if (isGeminiImageModel) {
-        // Gemini 模型通过 chat completions 生图
+      if (useChatAPI) {
+        // 没有配置 image-generation 端点，走 chat completions（如 Gemini 等通过对话形式返回图片的模型）
         const contentParts = [{ type: 'text', text: prompt }];
         if (referenceImage) {
           const refMatch = referenceImage.url.match(/^data:(image\/[^;]+);base64,(.+)$/);
@@ -574,7 +734,7 @@ const ImageGenerator = () => {
           }
         }
       } else {
-        // 非 Gemini 模型走标准 /v1/images/generations
+        // 模型配置了 image-generation 端点，走标准 /v1/images/generations
         const size = ratioToSize(ratio);
         const requestBody = {
           model: selectedModel,
@@ -618,6 +778,8 @@ const ImageGenerator = () => {
               a.id === assetId ? { ...a, taskId: data.id, status: data.status } : a
             )
           );
+          // 进入异步轮询模式，停止假进度（轮询有真实进度）
+          stopFakeProgress();
           pollTaskStatus(data.id, assetId);
         } else {
           // 同步返回模式：尝试多种格式解析
@@ -632,6 +794,7 @@ const ImageGenerator = () => {
       }
     } catch (error) {
       // 捕获未预期的全局异常
+      stopFakeProgress();
       const errMsg = extractErrMsg(error, t('未知错误'));
       console.error('[ImageGenerator] 未预期异常:', error);
       setAssets((prev) =>
@@ -882,10 +1045,18 @@ const ImageGenerator = () => {
                       </div>
                     </>
                   ) : asset.status === 'failure' ? (
-                    <div className='ig-recent-failed'>
-                      <XCircle size={28} strokeWidth={1.5} />
-                      <span>{asset.error || t('生成失败')}</span>
-                    </div>
+                    (() => {
+                      const { type, hint } = getFailureHint(asset.error);
+                      return (
+                        <div className={`ig-recent-failed${type !== 'error' ? ` ig-recent-failed--${type}` : ''}`}>
+                          {type === 'policy' ? <ShieldAlert size={28} strokeWidth={1.5} />
+                            : type === 'token' ? <AlertCircle size={28} strokeWidth={1.5} />
+                            : <XCircle size={28} strokeWidth={1.5} />}
+                          <span>{asset.error || t('生成失败')}</span>
+                          {hint && <span className='ig-failed-hint'>{hint}</span>}
+                        </div>
+                      );
+                    })()
                   ) : (
                     <div className='ig-recent-loading'>
                       <Loader2 size={32} className='ig-spin' />
@@ -974,10 +1145,18 @@ const ImageGenerator = () => {
                           onClick={() => setPreviewImage(asset)}
                         />
                       ) : asset.status === 'failure' ? (
-                        <div className='ig-asset-failed'>
-                          <XCircle size={28} strokeWidth={1.5} />
-                          <span>{asset.error || t('生成失败')}</span>
-                        </div>
+                        (() => {
+                          const { type, hint } = getFailureHint(asset.error);
+                          return (
+                            <div className={`ig-asset-failed${type !== 'error' ? ` ig-asset-failed--${type}` : ''}`}>
+                              {type === 'policy' ? <ShieldAlert size={28} strokeWidth={1.5} />
+                                : type === 'token' ? <AlertCircle size={28} strokeWidth={1.5} />
+                                : <XCircle size={28} strokeWidth={1.5} />}
+                              <span>{asset.error || t('生成失败')}</span>
+                              {hint && <span className='ig-failed-hint'>{hint}</span>}
+                            </div>
+                          );
+                        })()
                       ) : (
                         <div className='ig-asset-loading'>
                           <Loader2 size={28} className='ig-spin' />
