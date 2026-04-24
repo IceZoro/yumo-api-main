@@ -112,6 +112,11 @@ func SetApiRouter(router *gin.Engine) {
 				// Custom OAuth bindings
 				selfRoute.GET("/oauth/bindings", controller.GetUserOAuthBindings)
 				selfRoute.DELETE("/oauth/bindings/:provider_id", controller.UnbindCustomOAuth)
+
+				// 图片资产接口
+				selfRoute.POST("/image-assets", controller.CreateImageAsset)
+				selfRoute.GET("/image-assets", controller.GetImageAssets)
+				selfRoute.DELETE("/image-assets/:id", controller.DeleteImageAsset)
 			}
 
 			adminRoute := userRoute.Group("/")

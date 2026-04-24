@@ -63,24 +63,27 @@ const STYLE_CATEGORIES = [
   '平面设计', '建筑及室内设计', '创意玩法', '文创周边', '小说推文',
 ];
 
-// 比例预设
-const RATIO_PRESETS = ['1:1', '2:3', '3:2', '3:4', '4:3', '9:16', '16:9', '21:9'];
-
-// 图片质量
-const QUALITY_OPTIONS = [
-  { value: '720p', label: '720P' },
-  { value: '1080p', label: '1080P' },
-  { value: 'hd2k', label: '高清 2K' },
-  { value: 'uhd3k', label: '超清 3K' },
+// 尺寸预设：每种比例对应两档质量的固定标准分辨率
+// standard = 720p 基准（短边 720），hd = 1.5K 基准（短边 1080）
+const SIZE_PRESETS = [
+  { ratio: '1:1',  standard: '720x720',   hd: '1440x1440' },
+  { ratio: '4:3',  standard: '960x720',   hd: '1440x1080' },
+  { ratio: '3:4',  standard: '720x960',   hd: '1080x1440' },
+  { ratio: '16:9', standard: '1280x720',  hd: '1920x1080' },
+  { ratio: '9:16', standard: '720x1280',  hd: '1080x1920' },
+  { ratio: '3:2',  standard: '1080x720',  hd: '1620x1080' },
+  { ratio: '2:3',  standard: '720x1080',  hd: '1080x1620' },
+  { ratio: '21:9', standard: '1680x720',  hd: '2520x1080' },
 ];
 
-// 不同质量等级下各比例的基准短边尺寸
-const QUALITY_BASE_SIZE = {
-  '720p': 540,
-  '1080p': 1080,
-  'hd2k': 1440,
-  'uhd3k': 2160,
-};
+// 兼容旧代码：比例字符串列表
+const RATIO_PRESETS = SIZE_PRESETS.map((p) => p.ratio);
+
+// 图片质量（保留供后续扩展）
+const QUALITY_OPTIONS = [
+  { value: 'standard', label: '标准' },
+  { value: 'hd',       label: '高清 HD' },
+];
 
 // 生图模式
 const GEN_MODES = [
@@ -113,6 +116,10 @@ const INSPIRATION_ITEMS = [
   },
 ];
 
+const PREF_KEY = 'ig_prefs';
+const loadPref = () => { try { return JSON.parse(localStorage.getItem(PREF_KEY) || '{}'); } catch { return {}; } };
+const savePref = (patch) => { try { localStorage.setItem(PREF_KEY, JSON.stringify({ ...loadPref(), ...patch })); } catch {} };
+
 const ImageGenerator = () => {
   const { t } = useTranslation();
   const [activeMode, setActiveMode] = useState('image');
@@ -121,14 +128,16 @@ const ImageGenerator = () => {
   const [imageModels, setImageModels] = useState([]);
   const [modelsLoading, setModelsLoading] = useState(true);
   const [showStyleModal, setShowStyleModal] = useState(false);
-  const [selectedStyleCategory, setSelectedStyleCategory] = useState('全部');
+  const [selectedStyleCategory, setSelectedStyleCategory] = useState(loadPref().styleCategory || '全部');
   const [selectedStyleModel, setSelectedStyleModel] = useState(null);
   const [showParamsModal, setShowParamsModal] = useState(false);
   const [genMode, setGenMode] = useState('single');
-  const [quality, setQuality] = useState('1080p');
-  const [ratio, setRatio] = useState('3:4');
-  const [customWidth, setCustomWidth] = useState('816');
-  const [customHeight, setCustomHeight] = useState('1088');
+  const [quality, setQuality] = useState(loadPref().quality || 'standard');
+  const [ratio, setRatio] = useState(loadPref().ratio || '1:1');
+  // customWidth/customHeight: 当用户手动输入时，不再跟随比例预设
+  // null 表示“未手动输入，跟随比例预设”
+  const [customWidth, setCustomWidth] = useState(null);
+  const [customHeight, setCustomHeight] = useState(null);
   const [count, setCount] = useState(1);
   const [isGenerating, setIsGenerating] = useState(false);
   const [referenceImage, setReferenceImage] = useState(null); // { url: base64/data-url, name: filename }
@@ -150,6 +159,9 @@ const ImageGenerator = () => {
     progress: a.progress ?? '0%',
     taskId: a.taskId ?? null,
     imageUrl: a.imageUrl ?? null,
+    expireAt: a.expireAt ?? null,
+    serverId: a.serverId ?? null,
+    fromServer: a.fromServer ?? false,
     error: a.error ?? null,
     createdAt: a.createdAt ?? Date.now(),
     finishedAt: a.finishedAt ?? null,
@@ -224,6 +236,37 @@ const ImageGenerator = () => {
 
       setAssets(savedAssets);
     } catch { setAssets([]); }
+
+    // 登录用户：从服务器拉取历史记录，合并到本地列表
+    if (userId !== 'guest') {
+      API.get('/api/user/image-assets?page=1&page_size=50')
+        .then((res) => {
+          if (res.data?.success && Array.isArray(res.data?.data?.items)) {
+            const serverAssets = res.data.data.items.map((item) => ({
+              id: item.id,
+              prompt: item.prompt || '',
+              model: item.model || '',
+              status: 'success',
+              progress: '100%',
+              taskId: null,
+              imageUrl: item.public_url,
+              expireAt: item.expire_at,
+              serverId: item.id,
+              error: null,
+              createdAt: new Date(item.created_at).getTime(),
+              finishedAt: new Date(item.created_at).getTime(),
+              fromServer: true,
+            }));
+            setAssets((prev) => {
+              // 以本地列表为主（包含未完成的任务），服务器记录归并到末尾（去重）
+              const localIds = new Set(prev.filter((a) => !a.fromServer).map((a) => a.id));
+              const serverOnly = serverAssets.filter((a) => !localIds.has(a.id));
+              return [...prev.filter((a) => !a.fromServer), ...serverOnly].slice(0, 100);
+            });
+          }
+        })
+        .catch((e) => console.warn('[ImageGenerator] 拉取服务器记录失败:', e?.message));
+    }
   }, [assetStorageKey, userLoaded]);
 
   // 模式切换
@@ -292,61 +335,47 @@ const ImageGenerator = () => {
     fetchImageModels();
   }, []);
 
-  // 将比例字符串转换为 size 格式，根据质量等级动态计算
+  // 根据比例和质量获取标准尺寸字符串
   const ratioToSize = (ratioStr, qualityLevel) => {
     const q = qualityLevel || quality;
-    const base = QUALITY_BASE_SIZE[q] || 1080;
-    // 解析比例
-    const [rw, rh] = ratioStr.split(':').map(Number);
-    if (!rw || !rh) return `${base}x${base}`;
-    const gcd = (a, b) => (b === 0 ? a : gcd(b, a % b));
-    const g = gcd(rw, rh);
-    const sw = rw / g;
-    const sh = rh / g;
-    // 以长边为 base 计算宽高
-    let w, h;
-    if (sw >= sh) {
-      w = base;
-      h = Math.round(base * sh / sw);
-    } else {
-      h = base;
-      w = Math.round(base * sw / sh);
+    const preset = SIZE_PRESETS.find((p) => p.ratio === ratioStr);
+    if (!preset) return '720x720';
+    return preset[q] || preset['standard'];
+  };
+
+  // 计算当前实际发送的尺寸：手动输入优先，否则用比例+质量预设
+  const getEffectiveSize = () => {
+    if (customWidth && customHeight) {
+      return `${customWidth}x${customHeight}`;
     }
-    // 确保 8 的倍数（部分模型要求）
-    w = Math.round(w / 8) * 8;
-    h = Math.round(h / 8) * 8;
-    return `${w}x${h}`;
+    return ratioToSize(ratio, quality);
   };
 
-  // 辅助：根据当前比例和质量计算宽高
-  const computeSize = (ratioStr, qualityLevel) => {
-    const sizeStr = ratioToSize(ratioStr, qualityLevel);
-    const [w, h] = sizeStr.split('x').map(Number);
-    return { w, h };
-  };
-
-  // 切换比例时更新 customWidth/customHeight
+  // 切换比例时：清除手动尺寸输入，存偏好
   const handleRatioChange = (newRatio) => {
     setRatio(newRatio);
-    const { w, h } = computeSize(newRatio, quality);
-    setCustomWidth(String(w));
-    setCustomHeight(String(h));
+    setCustomWidth(null);
+    setCustomHeight(null);
+    savePref({ ratio: newRatio });
   };
 
-  // 切换质量时更新 customWidth/customHeight
+  // 切换质量时：存偏好，清除手动尺寸（让尺寸跟随质量变化）
   const handleQualityChange = (newQuality) => {
     setQuality(newQuality);
-    const { w, h } = computeSize(ratio, newQuality);
-    setCustomWidth(String(w));
-    setCustomHeight(String(h));
+    setCustomWidth(null);
+    setCustomHeight(null);
+    savePref({ quality: newQuality });
   };
 
-  // 初始化 customWidth/customHeight
-  useEffect(() => {
-    const { w, h } = computeSize(ratio, quality);
-    setCustomWidth(String(w));
-    setCustomHeight(String(h));
-  }, []);
+  // 手动输入尺寸时：清除比例选中状态
+  const handleCustomWidthChange = (val) => {
+    setCustomWidth(val);
+    if (val) setRatio('');
+  };
+  const handleCustomHeightChange = (val) => {
+    setCustomHeight(val);
+    if (val) setRatio('');
+  };
 
   // 获取状态图标和文本
   const getStatusInfo = (status) => {
@@ -610,13 +639,35 @@ const ImageGenerator = () => {
       );
     };
 
+    // 辅助函数：将图片 URL 保存到服务器，返回服务器内部 URL（失败时回退用原 URL）
+    const saveImageToServer = async (imageUrl) => {
+      if (userId === 'guest') return imageUrl; // 未登录不保存
+      try {
+        const res = await API.post('/api/user/image-assets', {
+          image_url: imageUrl,
+          prompt,
+          model: selectedModel,
+          size: getEffectiveSize(),
+          quality,
+        });
+        if (res.data?.success && res.data?.data?.public_url) {
+          return { url: res.data.data.public_url, expireAt: res.data.data.expire_at, serverId: res.data.data.id };
+        }
+      } catch (e) {
+        console.warn('[ImageGenerator] 保存图片到服务器失败:', e?.message);
+      }
+      return { url: imageUrl, expireAt: null, serverId: null };
+    };
+
     // 辅助函数：将资产更新为成功状态
-    const markSuccess = (imageUrl) => {
+    const markSuccess = async (imageUrl) => {
       stopFakeProgress();
+      // 异步保存到服务器，获取持久化 URL 和过期时间
+      const { url: finalUrl, expireAt, serverId } = await saveImageToServer(imageUrl);
       setAssets((prev) =>
         prev.map((a) =>
           a.id === assetId
-            ? { ...a, status: 'success', progress: '100%', imageUrl, finishedAt: Date.now() }
+            ? { ...a, status: 'success', progress: '100%', imageUrl: finalUrl, expireAt, serverId, finishedAt: Date.now() }
             : a
         )
       );
@@ -722,7 +773,7 @@ const ImageGenerator = () => {
           const imageUrl = base64Match?.[0] || mdImageMatch?.[1] || urlMatch?.[0] || null;
 
           if (imageUrl) {
-            markSuccess(imageUrl);
+            await markSuccess(imageUrl);
           } else if (choice) {
             // 有响应但没图片
             const detailMsg = contentStr.length > 0
@@ -735,13 +786,13 @@ const ImageGenerator = () => {
         }
       } else {
         // 模型配置了 image-generation 端点，走标准 /v1/images/generations
-        const size = ratioToSize(ratio);
+        const size = getEffectiveSize();
         const requestBody = {
           model: selectedModel,
           prompt: prompt,
           n: count,
           size: size,
-          quality: ['hd2k', 'uhd3k'].includes(quality) ? 'hd' : 'standard',
+          quality: quality,
           response_format: 'url',
         };
         if (referenceImage) {
@@ -785,7 +836,7 @@ const ImageGenerator = () => {
           // 同步返回模式：尝试多种格式解析
           const imageUrl = extractImageUrl(data);
           if (imageUrl) {
-            markSuccess(imageUrl);
+            await markSuccess(imageUrl);
           } else {
             console.warn('[ImageGenerator] 无法识别的响应格式:', data);
             markFailure(t('未获取到图片结果，请查看控制台日志'));
@@ -891,19 +942,6 @@ const ImageGenerator = () => {
 
       {/* 生成面板 */}
       <div className='ig-panel'>
-        {/* 模式切换标签 */}
-        <div className='ig-mode-tabs'>
-          {MODE_TABS.map((tab) => (
-            <button
-              key={tab.key}
-              className={`ig-mode-tab ${activeMode === tab.key ? 'active' : ''} ${tab.key !== 'image' ? 'disabled' : ''}`}
-              onClick={() => handleModeSwitch(tab.key)}
-            >
-              {t(tab.label)}
-            </button>
-          ))}
-        </div>
-
         {/* 提示词输入 */}
         <div className='ig-prompt-area'>
           <textarea
@@ -1074,35 +1112,6 @@ const ImageGenerator = () => {
         </div>
       )}
 
-      {/* 灵感示例区 */}
-      <div className='ig-inspiration'>
-        <div className='ig-inspiration-header'>
-          <h3>{t('来试试一键做同款')}</h3>
-          <button className='ig-btn-more'>{t('查看更多')}</button>
-        </div>
-        <div className='ig-inspiration-grid'>
-          {INSPIRATION_ITEMS.map((item) => (
-            <div key={item.id} className='ig-inspiration-card'>
-              <div className='ig-inspiration-img-wrap'>
-                <img src={item.url} alt={item.title} className='ig-inspiration-img' />
-                <div className='ig-inspiration-overlay'>
-                  <button
-                    className='ig-btn-makesame'
-                    onClick={() => handleMakeSame(item)}
-                  >
-                    {t('做同款')}
-                  </button>
-                </div>
-              </div>
-              <div className='ig-inspiration-info'>
-                <span className='ig-inspiration-model'>{item.model}</span>
-                <span className='ig-inspiration-title'>{item.title}</span>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
       {/* ====== 我的资产面板 ====== */}
       {showAssets && (
         <div className='ig-assets-panel'>
@@ -1177,6 +1186,11 @@ const ImageGenerator = () => {
                       <p className='ig-asset-prompt'>{asset.prompt}</p>
                       <div className='ig-asset-time'>
                         <span>{new Date(asset.createdAt).toLocaleTimeString()}</span>
+                        {asset.expireAt && (
+                          <span className='ig-asset-expire'>
+                            {t('保存至')} {new Date(asset.expireAt).toLocaleDateString()} {t('（90天后自动删除）')}
+                          </span>
+                        )}
                       </div>
                     </div>
 
@@ -1282,7 +1296,7 @@ const ImageGenerator = () => {
                 <button
                   key={cat}
                   className={`ig-category-btn ${selectedStyleCategory === cat ? 'active' : ''}`}
-                  onClick={() => setSelectedStyleCategory(cat)}
+                  onClick={() => { setSelectedStyleCategory(cat); savePref({ styleCategory: cat }); }}
                 >
                   {t(cat)}
                 </button>
@@ -1364,14 +1378,14 @@ const ImageGenerator = () => {
             <div className='ig-params-section'>
               <label className='ig-params-label'>{t('图片尺寸')}</label>
               <div className='ig-ratio-grid'>
-                {RATIO_PRESETS.map((r) => (
+                {SIZE_PRESETS.map((preset) => (
                   <button
-                    key={r}
-                    className={`ig-ratio-btn ${ratio === r ? 'active' : ''}`}
-                    onClick={() => handleRatioChange(r)}
+                    key={preset.ratio}
+                    className={`ig-ratio-btn ${ratio === preset.ratio ? 'active' : ''}`}
+                    onClick={() => handleRatioChange(preset.ratio)}
                   >
-                    <span className='ig-ratio-label'>{r}</span>
-                    <span className='ig-ratio-size'>{ratioToSize(r)}</span>
+                    <span className='ig-ratio-label'>{preset.ratio}</span>
+                    <span className='ig-ratio-size'>{ratioToSize(preset.ratio, quality)}</span>
                   </button>
                 ))}
               </div>
@@ -1380,20 +1394,29 @@ const ImageGenerator = () => {
                   <label>W</label>
                   <input
                     type='number'
-                    value={customWidth}
-                    onChange={(e) => setCustomWidth(e.target.value)}
+                    value={customWidth ?? (ratio ? ratioToSize(ratio, quality).split('x')[0] : '')}
+                    onChange={(e) => handleCustomWidthChange(e.target.value)}
                     className='ig-size-input'
+                    placeholder={ratio ? ratioToSize(ratio, quality).split('x')[0] : ''}
                   />
                 </div>
                 <div className='ig-size-input-group'>
                   <label>H</label>
                   <input
                     type='number'
-                    value={customHeight}
-                    onChange={(e) => setCustomHeight(e.target.value)}
+                    value={customHeight ?? (ratio ? ratioToSize(ratio, quality).split('x')[1] : '')}
+                    onChange={(e) => handleCustomHeightChange(e.target.value)}
                     className='ig-size-input'
+                    placeholder={ratio ? ratioToSize(ratio, quality).split('x')[1] : ''}
                   />
                 </div>
+                {(customWidth || customHeight) && (
+                  <button
+                    className='ig-size-reset'
+                    onClick={() => { setCustomWidth(null); setCustomHeight(null); }}
+                    title={t('重置为比例尺寸')}
+                  >↺</button>
+                )}
               </div>
             </div>
 

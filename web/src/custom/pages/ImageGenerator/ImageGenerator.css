@@ -1028,6 +1028,24 @@ body[theme-mode='dark'] .ig-page,
   border-color: var(--semi-color-primary);
 }
 
+/* 重置尺寸按鈕 */
+.ig-size-reset {
+  flex-shrink: 0;
+  padding: 4px 8px;
+  border: 1px solid var(--semi-color-border);
+  border-radius: 6px;
+  background: none;
+  color: var(--semi-color-text-2);
+  font-size: 14px;
+  cursor: pointer;
+  transition: color 0.15s;
+  align-self: center;
+}
+.ig-size-reset:hover {
+  color: var(--semi-color-primary);
+  border-color: var(--semi-color-primary);
+}
+
 .ig-params-confirm {
   margin-top: 4px;
 }
@@ -1275,6 +1293,15 @@ body[theme-mode='dark'] .ig-page,
 .ig-asset-time {
   font-size: 11px;
   color: var(--semi-color-text-3);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.ig-asset-expire {
+  font-size: 10px;
+  color: var(--semi-color-text-3);
+  opacity: 0.75;
 }
 
 /* 操作按钮 */
